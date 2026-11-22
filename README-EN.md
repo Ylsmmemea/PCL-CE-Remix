@@ -6,7 +6,7 @@
 
 # PCL CE Remix
 
-[download](https://github.com/Ylsmmemea/PCL CE Remix/releases/latest)
+[download](https://github.com/Ylsmmemea/PCL-CE-Remix/releases/latest)
 
 </div>
 
