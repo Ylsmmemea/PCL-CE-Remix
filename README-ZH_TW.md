@@ -8,7 +8,7 @@
 
 [社群版下載](https://github.com/Ylammemea/PCL CE Remix/releases/latest)
 
-[</div>
+</div>
 
 PCL CE Remix 是基於 PCL CE 開放原始碼二次開發的社群版本，包括了主線暫未製作的功能和改進！
 
