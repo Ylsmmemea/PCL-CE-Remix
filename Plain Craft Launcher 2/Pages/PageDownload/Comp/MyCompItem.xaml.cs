@@ -300,8 +300,11 @@ public partial class MyCompItem
         OpenDetail((ModComp.CompProject)sender.Tag);
     }
 
-    // 跳到指定工程的详情页
-    // 目标版本和加载器按当前所在页面推断 所以点主条目和点合并出来的来源子行走的是同一套筛选 只是目标工程不同
+    /// <summary>
+    ///     跳转到指定工程的详情页。<br/>
+    ///     目标版本与加载器按**当前所在页面**推断，因此不管是点主条目还是点合并出来的来源子行，
+    ///     都会沿用同一套筛选条件，只是目标工程不同。
+    /// </summary>
     public static void OpenDetail(ModComp.CompProject project)
     {
         var targetType = default(ModComp.CompType);
@@ -473,21 +476,27 @@ public partial class MyCompItem
 
     #region 多来源子行
 
+    /// <summary>子行区的高度。</summary>
     private const double MergedRowHeight = 30d;
 
-    // 合并条目的根高度 普通条目是 64 多出来的正好是子行区
-    // 这样按比例分的那两行 1* 和 1.1* 还是 10px 没合并的条目观感不变
+    /// <summary>
+    ///     合并条目时的根高度。普通条目是 64，差值正好等于子行区，
+    ///     因此按比例分配的那两行（1* 与 1.1*）仍然是 10px，未合并的条目观感不变。
+    /// </summary>
     public const double MergedHeight = 64d + MergedRowHeight;
 
-    // 合并同款模组时展开的两行来源信息 一行是主条目所在的来源 一行是被合并掉的那个来源
-    // 两行都能点 各自跳到自己来源的详情页
-    // 外面建 MyVirtualizingElement 时高度必须用 MergedHeight 占位高度和实例高度对不上 延迟实例化之后会跳或者叠
+    /// <summary>
+    ///     合并同款模组时，展开条目下方的两行来源信息。<br/>
+    ///     两行分别对应主条目所在来源与被合并的另一个来源，各自可点击进入对应来源的详情页。<br/>
+    ///     调用方创建 <c>MyVirtualizingElement</c> 时必须用同一高度（<see cref="MergedHeight"/>），
+    ///     否则占位高度与实例高度不符会在延迟实例化后跳动或重叠。
+    /// </summary>
     public void SetMergedSources(string lineA, string lineB, Action onA, Action onB)
     {
         LabMergedSourceA.Text = lineA;
         LabMergedSourceB.Text = lineB;
 
-        // 必须标记 Handled 不然点击冒泡到条目本身 会去开主条目的详情页 把这里的跳转盖掉
+        // 必须标记 Handled：否则点击会冒泡到条目本身，触发「打开主条目详情页」而盖掉这里的跳转
         LabMergedSourceA.MouseLeftButtonUp += (_, e) =>
         {
             e.Handled = true;

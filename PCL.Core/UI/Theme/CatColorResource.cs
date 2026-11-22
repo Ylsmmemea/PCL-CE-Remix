@@ -43,8 +43,10 @@ public class CatColorResource
     /// </summary>
     public bool ApplyToColor { get; init; } = false;
 
-    // 把颜色写进 WPF 资源字典 只能在 LifecycleState.Loaded 及之后的阶段调
-    // 已有的画刷就地改颜色而不是换实例 换实例的话 DynamicResource 那边全要重新绑定 界面会闪
+    /// <summary>
+    /// 应用该颜色到 WPF 资源字典中，仅可在 <see cref="LifecycleState.Loaded"/> 及后面的阶段调用。<br/>
+    /// 已存在的画刷会就地更新颜色而非替换实例，避免 <c>DynamicResource</c> 引用方全部重新绑定而导致界面闪烁。
+    /// </summary>
     public void Apply()
     {
         var res = Lifecycle.CurrentApplication.Resources;

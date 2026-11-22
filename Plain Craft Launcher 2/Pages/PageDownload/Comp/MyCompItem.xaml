@@ -20,8 +20,8 @@
         <RowDefinition Height="18" />
         <RowDefinition Height="16" />
         <RowDefinition Height="1.1*" />
-        <!-- 多来源的那两行 默认 0 高度 只有条目合并了另一个来源时代码才把它撑成 30 根高调到 94
-             这样按比例分的那两行还是 10px 没合并的条目观感完全不变 -->
+        <!-- 多来源子行。默认 0 高度，仅当条目合并了另一来源时由代码展开为 30 并把根高调到 94 ——
+             这样按比例分配的两行仍然是 10px，未合并的条目观感完全不变。 -->
         <RowDefinition x:Name="RowMergedSources" Height="0" />
     </Grid.RowDefinitions>
     <!-- Logo -->
@@ -131,7 +131,7 @@
                    FontSize="12" />
     </Grid>
 
-    <!-- 多来源子行 合并过才显示 两行是各平台的来源和更新时间 点一下进各自的详情页 -->
+    <!-- 多来源子行：合并了另一来源时显示，两行分别是各平台的来源与更新时间，点击进各自详情页 -->
     <StackPanel x:Name="PanMergedSources" Grid.Row="5" Grid.Column="3" Grid.ColumnSpan="2"
                 VerticalAlignment="Center" Visibility="Collapsed"
                 SnapsToDevicePixels="False" UseLayoutRounding="False">

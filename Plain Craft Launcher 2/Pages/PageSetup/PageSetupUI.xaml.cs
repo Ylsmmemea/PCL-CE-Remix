@@ -268,7 +268,7 @@ public partial class PageSetupUI
 
     private void BtnBackgroundRefresh_Click(object sender, MouseButtonEventArgs e)
     {
-        // 必应模式本地已经缓存了好几张 直接轮换就行 不用再请求接口
+        // 必应模式已缓存多张图片，直接轮换即可，无需重新请求接口
         if (Config.Preference.Background.SourceType == 1 && TryShowNextBingWallpaper(true))
             return;
 
@@ -279,7 +279,7 @@ public partial class PageSetupUI
     {
         if (PanBackgroundOpacity is null)
             return;
-        // 清空文件夹按钮只有文件夹轮播模式下才有意义
+        // 清空文件夹按钮仅在文件夹轮播模式下有意义
         var isFolderSource = Config.Preference.Background.SourceType == 0;
         if (show)
         {
@@ -315,7 +315,12 @@ public partial class PageSetupUI
         }
     }
 
-    // 刷新单图来源的背景 sourceType 1 是必应每日一图 2 是指定的本地图片
+    /// <summary>
+    ///     刷新单图来源（必应每日一图 / 指定的本地图片文件）的背景。
+    /// </summary>
+    /// <param name="sourceType">来源类型，1 为必应每日一图，2 为指定的本地图片文件。</param>
+    /// <param name="isHint">是否显示刷新提示。</param>
+    /// <param name="refresh">是否刷新图片显示。</param>
     private static void BackgroundRefreshSingle(int sourceType, bool isHint, bool refresh)
     {
         if (!refresh)
@@ -341,7 +346,7 @@ public partial class PageSetupUI
             return;
         }
 
-        // 必应壁纸先用本地缓存立刻显示 免得等网络的时候一直空着 然后再去后台更新缓存
+        // 必应壁纸：优先使用本地缓存立即显示，避免等待网络造成空白；随后在后台更新缓存
         var cached = ModBackground.GetCachedBingWallpapers();
         if (cached.Count > 0)
         {
@@ -350,7 +355,7 @@ public partial class PageSetupUI
         }
         else
         {
-            // 一张缓存都没有才提示加载中
+            // 无任何缓存时才提示加载中
             HintService.Hint(Lang.Text("Setup.Ui.Background.Bing.Loading"), HintType.Info);
         }
 
@@ -363,7 +368,7 @@ public partial class PageSetupUI
             {
                 if (paths.Count == 0)
                 {
-                    // 有缓存就静默失败 保持当前显示
+                    // 已有缓存时静默失败，保持当前显示
                     if (showHint && !hasCache)
                         HintService.Hint(Lang.Text("Setup.Ui.Background.Bing.Failed"), HintType.Error);
                     else if (!hasCache)
@@ -371,7 +376,7 @@ public partial class PageSetupUI
                     return;
                 }
 
-                // 没缓存就拿下载结果立刻显示一张
+                // 无缓存时需要用下载结果立即显示一张
                 if (!hasCache)
                 {
                     ApplyBingWallpapers(paths);
@@ -381,7 +386,10 @@ public partial class PageSetupUI
         }, "Bing Wallpaper");
     }
 
-    // 应用必应壁纸列表 首次应用时把上次用过的那张排除掉 免得每次启动都是同一张
+    /// <summary>
+    ///     应用必应壁纸列表。首次应用时排除上次用过的那张，避免每次启动都是同一张。
+    /// </summary>
+    /// <param name="paths">候选图片路径列表。</param>
     private static void ApplyBingWallpapers(List<string> paths)
     {
         if (_bingWallpaperIndex >= 0)
@@ -397,12 +405,19 @@ public partial class PageSetupUI
         _bingWallpapers = candidates.Count > 0 ? candidates : paths;
     }
 
+    /// <summary>
+    ///     已缓存的必应壁纸列表。
+    /// </summary>
     private static List<string>? _bingWallpapers;
 
-    // 当前用的是列表里第几张 -1 表示还没用过
+    /// <summary>
+    ///     当前使用的必应壁纸在列表中的索引，-1 表示尚未使用。
+    /// </summary>
     private static int _bingWallpaperIndex = -1;
 
-    // 换下一张 每次调用都换 全部轮过一遍就重新打乱
+    /// <summary>
+    ///     切换到下一张必应壁纸。每次调用都会换一张，如果已用过全部图片则重新打乱顺序。
+    /// </summary>
     private static void ShowNextBingWallpaper(bool isHint)
     {
         if (_bingWallpapers is null || _bingWallpapers.Count == 0)
@@ -426,6 +441,9 @@ public partial class PageSetupUI
         ShowImageBackground(_bingWallpapers[_bingWallpaperIndex], isHint);
     }
 
+    /// <summary>
+    ///     打乱列表顺序。
+    /// </summary>
     private static List<string> Shuffle(IReadOnlyList<string> source)
     {
         var list = source.ToList();
@@ -438,8 +456,10 @@ public partial class PageSetupUI
         return list;
     }
 
-    // 当前是必应模式又有缓存的话就换下一张
-    // 刷新背景内容那个按钮用它 不重新请求接口也能换图
+    /// <summary>
+    ///     若当前处于必应壁纸模式且已有缓存，则切换到下一张。<br/>
+    ///     用于「刷新背景内容」按钮在不重新请求接口的情况下换图。
+    /// </summary>
     public static bool TryShowNextBingWallpaper(bool isHint)
     {
         if (_bingWallpapers is null || _bingWallpapers.Count == 0)
@@ -448,7 +468,9 @@ public partial class PageSetupUI
         return true;
     }
 
-    // 把指定的图片设成背景
+    /// <summary>
+    ///     将指定图片应用为背景。
+    /// </summary>
     private static void ShowImageBackground(string path, bool isHint)
     {
         try
@@ -857,8 +879,10 @@ public partial class PageSetupUI
 
     // 主题
 
-    // 刷新自定义配色面板的可见性
-    // 自定义颜色是亮暗模式共用的 所以哪个模式选中自定义都得显示
+    /// <summary>
+    ///     刷新自定义配色面板的可见性。<br/>
+    ///     自定义颜色为亮暗模式共用，因此任一模式选中自定义即显示。
+    /// </summary>
     public void RefreshCustomThemePanel()
     {
         var theme = Config.Preference.Theme;
@@ -870,7 +894,9 @@ public partial class PageSetupUI
             ThemeService.IsDarkMode ? "Setup.Ui.Theme.PickDarkColor" : "Setup.Ui.Theme.PickLightColor");
     }
 
-    // 按配置刷新自定义配色那几个控件
+    /// <summary>
+    ///     按配置刷新自定义配色的控件状态。
+    /// </summary>
     private void ReloadCustomTheme()
     {
         SliderCustomHue.Value = Config.Preference.Theme.CustomThemeHue;
@@ -881,7 +907,9 @@ public partial class PageSetupUI
         RefreshCustomThemePanel();
     }
 
-    // 刷新自定义配色的预览色块
+    /// <summary>
+    ///     刷新自定义配色的预览色块。
+    /// </summary>
     private void RefreshCustomThemePreview()
     {
         try
@@ -890,17 +918,19 @@ public partial class PageSetupUI
         }
         catch
         {
-            // 颜色不合法就保持原样
+            // 颜色非法时保持原样
         }
     }
 
-    // 三个 HSL 滑块里任意一个动了 就把 Hex 和另外两个滑块一起同步过去
+    /// <summary>
+    ///     三个 HSL 滑块中任意一个变化时，同步 Hex 与其余滑块。
+    /// </summary>
     private void SliderCustomTheme_Change(object senderRaw, bool user)
     {
         if (ModAnimation.AniControlEnabled != 0)
             return;
 
-        // FromHsl 的饱和度和明度都是 0 到 100
+        // FromHsl 的饱和度与明度取 0-100
         var color = NColor.FromHsl(SliderCustomHue.Value, SliderCustomSat.Value, SliderCustomLight.Value);
         var hex = color.ToHexString();
         SetByTag("UiCustomThemeHue", SliderCustomHue.Value);
@@ -912,7 +942,9 @@ public partial class PageSetupUI
         ModAnimation.AniControlEnabled -= 1;
         RectCustomThemePreview.Background = new SolidColorBrush(color);
     }
-    // Hex 输入框变了 反算回 HSL 再同步滑块
+    /// <summary>
+    ///     Hex 输入框变化时，反算 HSL 并同步滑块。
+    /// </summary>
     private void TextCustomThemeHex_Change(object senderRaw, RoutedEventArgs e)
     {
         var sender = (MyTextBox)senderRaw;

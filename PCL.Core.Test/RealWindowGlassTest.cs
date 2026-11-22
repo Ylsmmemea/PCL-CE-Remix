@@ -15,11 +15,14 @@ using Color = System.Windows.Media.Color;
 
 namespace PCL.Core.Test;
 
-// 在真窗口上验证液态玻璃 这是唯一能反映实际观感的做法
-//
-// RenderTargetBitmap 走软件光栅化 会整体跳过自定义 ShaderEffect
-// 实测连仓库里已有的 AdaptiveBlur 都是 0% 差异 所以离屏断言根本反映不了真实渲染
-// 这里改成开一个真窗口走 GPU 渲染 再用 GDI 从屏幕上把像素抄回来
+/// <summary>
+///     在真实窗口上验证液态玻璃 —— 这是唯一能反映实际观感的方式。<br/>
+///     <para>
+///     <see cref="RenderTargetBitmap"/> 走软件光栅化，会整体跳过自定义 <c>ShaderEffect</c>
+///     （实测连仓库里已有的 <c>AdaptiveBlur</c> 都是 0% 差异），所以任何离屏断言都无法
+///     反映真实渲染结果。这里改为开一个真窗口、走 GPU 渲染，再用 GDI 从屏幕取回像素。
+///     </para>
+/// </summary>
 [TestClass]
 public class RealWindowGlassTest
 {
@@ -62,7 +65,7 @@ public class RealWindowGlassTest
         return dispatcher.Invoke(func);
     }
 
-    // 把消息队列泵到 Background 优先级 渲染提交才有机会执行
+    /// <summary>把消息队列泵到 Background 优先级，让渲染提交有机会执行。</summary>
     private static void Pump()
     {
         var frame = new DispatcherFrame();
@@ -71,7 +74,7 @@ public class RealWindowGlassTest
         Dispatcher.PushFrame(frame);
     }
 
-    // 高饱和棋盘 两种格子亮度差得大 位移很容易检出来
+    /// <summary>高饱和棋盘：两种格子亮度差异大，位移极易检出。</summary>
     private static BitmapSource Checker()
     {
         var stride = W * 4;
@@ -97,13 +100,16 @@ public class RealWindowGlassTest
         BlurAmount = 6,
         Refraction = refraction,
         RefThickness = 50,
+        NoiseScale = 40,
+        NoiseStrength = 0,
+        FlowTime = 10,
         Glare = 0,
         TextureSize = new System.Windows.Point(W, H),
         Tint = Color.FromArgb(0, 255, 255, 255),
         Opacity = 1
     };
 
-    // 把任意 UIElement 放进真窗口渲染一次 再把像素抓回来
+    /// <summary>把任意 UIElement 放进真窗口渲染一次并抓回像素。</summary>
     private static byte[] Capture(Func<UIElement> build, string? dumpName = null)
     {
         var root = build();
@@ -176,7 +182,7 @@ public class RealWindowGlassTest
         return (double)n / (a.Length / 4);
     }
 
-    // 只有图片本身 不带宿主结构 当基线用
+    /// <summary>只有图片本身，无宿主结构，作为基线。</summary>
     private static byte[] Plain(double refraction)
     {
         var image = new System.Windows.Controls.Image
@@ -190,9 +196,11 @@ public class RealWindowGlassTest
         return Capture(() => image);
     }
 
-    // 照着 MyCard 的层次搭 父级带底色 玻璃面板嵌在里面
-    // BackgroundPresenter 会把父级画的内容也算进玻璃的输入
-    // 所以父级底色的不透明度直接决定玻璃看不看得见背后的纹理
+    /// <summary>
+    ///     复现 MyCard 的层次结构：父级带不透明/半透明底色，玻璃面板嵌在其内部。<br/>
+    ///     <c>BackgroundPresenter</c> 会把父级的绘制内容一并算进玻璃的输入，
+    ///     因此父级底色的不透明度直接决定玻璃能否看到背后的纹理。
+    /// </summary>
     private static byte[] InHost(byte parentAlpha, string? dumpName = null)
     {
         var root = new Grid { Width = W, Height = H, Background = System.Windows.Media.Brushes.Transparent };
@@ -204,13 +212,13 @@ public class RealWindowGlassTest
             Stretch = Stretch.Fill
         });
 
-        // 模拟 MyCard 带底色的父级容器 跟 MyCard 一样是 Grid 背景由容器自己画
+        // 模拟 MyCard：带底色的父级容器（与 MyCard 同为 Grid，背景由容器自身绘制）
         var card = new Grid
         {
             Background = new SolidColorBrush(Color.FromArgb(parentAlpha, 0xFB, 0xFB, 0xFB))
         };
 
-        // 模拟 mainBorder 真正承担玻璃的那个 BlurBorder 效果由全局配置驱动
+        // 模拟 mainBorder：真正承担玻璃的 BlurBorder，效果由全局配置驱动
         var glass = new BlurBorder
         {
             BlurRadius = 16,
@@ -224,7 +232,7 @@ public class RealWindowGlassTest
     }
 
     [TestMethod]
-    public void BaselineRefractionShouldWorkOnPlainImage()
+    public void 基线_纯图片上折射必须生效()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
@@ -234,10 +242,13 @@ public class RealWindowGlassTest
         Assert.IsTrue(ratio > 0.05, $"基线折射未生效（{ratio:P1}）");
     }
 
-    // 核心诊断 真实的 BlurBorder 待在父级容器里时看不看得见背后的纹理
-    // 跟 Plain 的区别在于它的输入是 BackgroundPresenter 抓父级视觉树得来的 父级底色会整体算进去
+    /// <summary>
+    ///     核心诊断：真实的 <see cref="BlurBorder"/> 在父级容器内能否看到背后的纹理。<br/>
+    ///     与 <see cref="Plain"/> 的区别在于它的输入由 <c>BackgroundPresenter</c> 抓取父级视觉树
+    ///     得到，而非元素自身内容 —— 父级底色会整体算进输入。
+    /// </summary>
     [TestMethod]
-    public void BlurBorderInsideParentContainerShouldCaptureParentContent()
+    public void 诊断_BlurBorder在父级容器内的表现()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
@@ -249,6 +260,8 @@ public class RealWindowGlassTest
                 PCL.Core.App.Config.Preference.Glass.LiquidEnabled = true;
                 PCL.Core.App.Config.Preference.Glass.LiquidRefraction = 60;
                 PCL.Core.App.Config.Preference.Glass.LiquidRefThickness = 50;
+                PCL.Core.App.Config.Preference.Glass.LiquidNoiseScale = 40;
+                PCL.Core.App.Config.Preference.Glass.LiquidNoiseStrength = 0;
                 PCL.Core.App.Config.Preference.Glass.LiquidGlare = 0;
                 ok = true;
             }
@@ -259,8 +272,8 @@ public class RealWindowGlassTest
 
             if (!ok) return (false, 0d);
 
-            var a = InHost(36, "blurborder-on");   // alpha 0.14 对应开毛玻璃
-            var b = InHost(210, "blurborder-82");  // alpha 0.824 对应关毛玻璃
+            var a = InHost(36, "blurborder-on");   // alpha 0.14，对应开启毛玻璃
+            var b = InHost(210, "blurborder-82");  // alpha 0.824，对应关闭毛玻璃
             return (true, DiffRatio(a, b));
         });
 
@@ -274,9 +287,11 @@ public class RealWindowGlassTest
         Console.WriteLine("（差异大 → 父级底色确实参与了玻璃输入；差异小 → 玻璃抓不到父级底色）");
     }
 
-    // 边缘不能有黑边 输入是高饱和棋盘 取最外圈最暗的像素跟内圈比
+    /// <summary>
+    ///     边缘不得出现黑边：输入为高饱和棋盘，取最外圈最暗像素与内圈对比。
+    /// </summary>
     [TestMethod]
-    public void EdgesShouldNotProduceDarkBorders()
+    public void 边缘不应出现黑边()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
@@ -302,9 +317,9 @@ public class RealWindowGlassTest
         }
     }
 
-    // 核心验收 折射得真的改变边缘的背景内容 而且不能动到中心
+    /// <summary>核心验收：折射必须真的改变边缘的背景内容，且不影响中心。</summary>
     [TestMethod]
-    public void EdgesShouldRefractWhileCenterStaysFlat()
+    public void 边缘应发生折射而中心保持平整()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 

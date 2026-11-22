@@ -27,9 +27,14 @@ public record ToneProfile(
     double ATransparent = 0,
     double ABackground = 0.824,
     double AToolTip = 0.9,
-    // 毛玻璃表面的不透明度 取值低一些才透得出背后内容
-    // 这层色是画在玻璃之上的 BlurBorder.OnRender 最后才调 base.OnRender 会整体抬高面板亮度
-    // 液态玻璃的折射已经把背景内容搬进面板了 再压一层浅色只会冲淡它
-    // 实测 0.14 时侧边栏和相邻没有玻璃的页面之间有明显亮度落差 观感像一张图被切成两块
+    /// <summary>
+    /// 毛玻璃表面的不透明度。取值较低以保证能透出背后内容。
+    /// <para>
+    /// 这层色是画在玻璃**之上**的（<c>BlurBorder.OnRender</c> 最后才调 <c>base.OnRender</c>），
+    /// 会整体抬高面板亮度。液态玻璃的折射已经把背景内容搬进了面板，
+    /// 再压一层浅色只会把它冲淡 —— 实测 0.14 时侧边栏与相邻的无玻璃页面之间
+    /// 出现明显亮度落差，观感像一张图被切成了两块。
+    /// </para>
+    /// </summary>
     double AGlass = 0.08
 );

@@ -5,7 +5,10 @@ using System.Text;
 
 namespace PCL.Core.ShaderCompiler;
 
-// 把编好的 .ps 反汇编成可读指令 跟参考实现比对算法用 也走 d3dcompiler_47.dll
+/// <summary>
+///     把已编译的 .ps 反汇编成可读指令，用于比对参考实现的算法。<br/>
+///     同样走 d3dcompiler_47.dll，无需 Windows SDK。
+/// </summary>
 internal static class Disassembler
 {
     [DllImport("d3dcompiler_47.dll", CharSet = CharSet.Ansi)]

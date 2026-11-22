@@ -79,14 +79,14 @@
             <SolidColorBrush x:Key="ColorBrushTransparent" Color="#00ffffff" />
             <SolidColorBrush x:Key="ColorBrushSemiTransparent">#01eaf2fe</SolidColorBrush>
             <SolidColorBrush x:Key="ColorBrushTransparentBackground" Color="#d2fbfbfb" />
-            <!-- 卡片背景 开毛玻璃时会被换成玻璃填充色 -->
+            <!-- 卡片背景。毛玻璃开启时会被替换为玻璃填充色 -->
             <SolidColorBrush x:Key="ColorBrushCardBackground" Color="#d2fbfbfb" />
-            <!-- 左侧菜单背景 开毛玻璃时换成不透明度更低的玻璃色 -->
+            <!-- 左侧菜单背景。毛玻璃开启时会被替换为低不透明度的玻璃色 -->
             <SolidColorBrush x:Key="ColorBrushSidebarBackground" Color="#d2fbfbfb" />
             <SolidColorBrush x:Key="ColorBrushGlassBackground" Color="#4dfbfbfb" />
-            <!-- 弹窗和通知的玻璃填充色 比普通面板不透明 文字才看得清 -->
+            <!-- 弹窗与通知的玻璃填充色，比普通面板更不透明以保证文字可读 -->
             <SolidColorBrush x:Key="ColorBrushMsgBoxGlass" Color="#B8FBFBFB" />
-            <!-- 浮层表面色 右键菜单和 ToolTip 用 开毛玻璃时换成半透明版本 -->
+            <!-- 浮层表面色（右键菜单、ToolTip 等）。毛玻璃开启时会被替换为半透明版本 -->
             <SolidColorBrush x:Key="ColorBrushSurface">#ffffff</SolidColorBrush>
             <SolidColorBrush x:Key="ColorBrushBackground">#fbfbfb</SolidColorBrush>
             <SolidColorBrush x:Key="ColorBrushToolTip">#e5ffffff</SolidColorBrush>
@@ -677,7 +677,7 @@
                 <Setter Property="BlurSamplingRate" Value="{DynamicResource BlurSamplingRate}" />
                 <Setter Property="BlurKernelType" Value="{DynamicResource BlurType}" />
             </Style>
-            <!-- MyCard 卡片毛玻璃统一由毛玻璃强度控制 不再跟 UiBlur -->
+            <!-- MyCard：卡片毛玻璃由毛玻璃强度统一控制，不再跟随 UiBlur -->
             <Style TargetType="local:MyCard">
                 <Setter Property="GlassRadius" Value="{DynamicResource GlassCardRadius}" />
             </Style>

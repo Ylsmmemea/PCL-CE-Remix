@@ -2106,7 +2106,8 @@ public static class ModDownload
 
                 case 3:
                 {
-                    // 自动测速 实测快的先发 另一个跟后面当回退 还没出结果就退回官方在前
+                    // 自动测速：实测更快的那个先发，另一个紧随其后作为回退。
+                    // 尚无测量结果时 Order 退回「官方在前」，与平衡档行为一致。
                     var (fastApi, slowApi) = ModSourceSpeedTest.Order(url, mcimUrl);
                     urls.Add(new KeyValuePair<string, int>(fastApi, 5));
                     urls.Add(new KeyValuePair<string, int>(slowApi, 5));
@@ -2183,7 +2184,8 @@ public static class ModDownload
 
                 case 3:
                 {
-                    // 自动测速 实测快的先发 另一个跟后面当回退 还没出结果就退回官方在前
+                    // 自动测速：实测更快的那个先发，另一个紧随其后作为回退。
+                    // 尚无测量结果时 Order 退回「官方在前」，与平衡档行为一致。
                     var (fastApi, slowApi) = ModSourceSpeedTest.Order(url, mcimUrl);
                     urls.Add(new KeyValuePair<string, int>(fastApi, 5));
                     urls.Add(new KeyValuePair<string, int>(slowApi, 5));
@@ -2380,8 +2382,8 @@ public static class ModDownload
             }
             case 3: // 自动测速
             {
-                // 实测快的放前面 没数据时退回官方在前
-                // 末尾还会补一个 original 保证列表非空 官方源始终兜底
+                // 实测更快的放前面；无数据时 Order 退回官方在前。
+                // 末尾仍会补一个 original（见方法结尾），保证列表非空且官方源始终兜底。
                 var (fastDl, slowDl) = ModSourceSpeedTest.Order(original, mirrorDl);
                 res.Add(fastDl);
                 res.Add(slowDl);

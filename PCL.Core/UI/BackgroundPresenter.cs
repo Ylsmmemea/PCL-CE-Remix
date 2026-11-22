@@ -48,8 +48,10 @@ namespace PCL.Core.UI
             _OnRenderMethod.Invoke(target, drawingContext);
         }
 
-        // 返回是否真的画出了东西
-        // 目标视觉要是还没渲染过一次 VisualBrush 的内容边界就是空的 那就什么都不画 调用方得重试
+        /// <returns>
+        ///     是否真的画出了内容。目标视觉若尚未完成一次渲染，<see cref="VisualBrush"/> 的
+        ///     内容边界为空 —— 此时什么都不画，调用方需要重试。
+        /// </returns>
         internal static bool DrawVisual(DrawingContext drawingContext, Visual visual, Point relatedXY)
         {
             var visualBrush = new VisualBrush(visual);
@@ -63,15 +65,15 @@ namespace PCL.Core.UI
                 return false;
             }
 
-            // 矩形对齐到整像素
+            // 矩形对齐到整像素。
             //
-            // 背景是把每个祖先和兄弟各画成一个独立矩形拼起来的 这些矩形经常落在分数坐标上
-            // 1* 分栏 居中的内容 带小数的边距 都会产生 .5
-            // 落在分数边界上的矩形 WPF 会对边缘做抗锯齿 相邻两个各贡献半透明的半像素
-            // 合成之后交界处就留下一条 1 像素的缝
+            // 背景是把每个祖先 / 兄弟各画成一个独立矩形拼出来的，而这些矩形通常落在
+            // 分数坐标上（1* 分栏、居中的内容、带小数的边距都会产生 .5）。落在分数边界
+            // 上的矩形，WPF 会对它的边缘做抗锯齿，于是相邻两个矩形各自贡献半透明的半像素，
+            // 合成后在交界处留下一条 1 像素的缝。
             //
-            // 普通毛玻璃 16px 模糊能把它抹平 液态玻璃只有 2~3px 缝就原样留在玻璃里 表现为挡板上的竖条
-            // 整数对齐之后相邻矩形严丝合缝 缝就没了
+            // 普通毛玻璃用 16px 模糊把这条缝抹平了，液态玻璃只有 2~3px，缝就原样留在玻璃里，
+            // 表现为挡板上的竖条。整数对齐后相邻矩形严丝合缝，缝随之消失。
             var x0 = Math.Round(relatedXY.X + contentBounds.X);
             var y0 = Math.Round(relatedXY.Y + contentBounds.Y);
             var x1 = Math.Round(relatedXY.X + contentBounds.X + contentBounds.Width);
@@ -115,9 +117,10 @@ namespace PCL.Core.UI
             // Debug.WriteLine("Parent layout updated, forcing render of BackgroundPresenter.");
         }
 
-        // 返回这次采集有没有成
-        // false 表示祖先不可见或者正在布局 什么都没画 调用方得找机会重试
-        // 不重试的话这层玻璃就一直空着 直到元素几何变了才会重新采
+        /// <returns>
+        ///     是否完成了一次有效采集。返回 <c>false</c> 表示因祖先不可见或正在布局而**什么都没画**，
+        ///     调用方应择机重试 —— 否则该玻璃层会一直保持空白，直到元素几何发生变化才重新采集。
+        /// </returns>
         internal static bool DrawBackground(
             DrawingContext drawingContext, UIElement self,
             Stack<UIElement> parentStackStorage,

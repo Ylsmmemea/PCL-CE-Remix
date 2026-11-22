@@ -16,13 +16,18 @@ using Color = System.Windows.Media.Color;
 
 namespace PCL.Core.Test;
 
-// 直接测真实的 BlurBorder 宿主路径
-//
-// 之前的测试都是把效果套在普通 Image 上 绕过了 BackgroundPresenter
-// 而卡片和导航栏走的是另一条路 抓父级视觉树当着色器输入 观感差异很可能就出在这
-//
-// BlurBorder 的效果由全局 Config 驱动 而 Config 在测试宿主里初始化不了
-// 所以这里用反射直接塞效果实例 在真控件上验证
+/// <summary>
+///     直接检验真实的 <see cref="BlurBorder"/> 宿主路径。<br/>
+///     <para>
+///     此前的测试都把效果套在普通 <c>Image</c> 上，绕过了 <c>BackgroundPresenter</c> ——
+///     而卡片/导航栏走的是「抓取父级视觉树作为着色器输入」这条完全不同的路径。
+///     观感差异很可能出在这里，而不是着色器本身。
+///     </para>
+///     <para>
+///     <see cref="BlurBorder"/> 的效果由全局 <c>Config</c> 驱动，而 <c>Config</c> 在测试宿主里
+///     无法初始化。这里用反射直接注入效果实例，从而在真实控件上做验证。
+///     </para>
+/// </summary>
 [TestClass]
 public class BlurBorderProbeTest
 {
@@ -90,8 +95,11 @@ public class BlurBorderProbeTest
         Dispatcher.PushFrame(frame);
     }
 
-    // 把液态玻璃塞进 BlurBorder 的缓存字段 绕开 Config
-    // _GetOrCreateEffect 在缓存键匹配时直接返回缓存实例 所以键也得一起写进去 效果才会真的被用上
+    /// <summary>
+    ///     把液态玻璃效果注入 <see cref="BlurBorder"/> 的缓存字段，绕开 Config。<br/>
+    ///     <c>_GetOrCreateEffect</c> 在缓存键匹配时直接返回缓存实例，
+    ///     因此只要同时写入键，效果就会被真正使用。
+    /// </summary>
     private static void InjectLiquidGlass(BlurBorder border, int refraction, int thickness)
     {
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -99,16 +107,19 @@ public class BlurBorderProbeTest
 
         var effect = new LiquidGlassEffect
         {
-            // 跟应用里一致 液态玻璃的模糊量级比普通毛玻璃低得多
+            // 与应用内一致：液态玻璃的模糊量级远低于普通毛玻璃
             BlurAmount = 1.8,
             Refraction = refraction,
             RefThickness = thickness,
+            NoiseScale = 40,
+            NoiseStrength = 0,
+            FlowTime = 0,
             Glare = 0.5,
             Tint = Color.FromArgb(0, 255, 255, 255),
             Opacity = 1
         };
 
-        // 键是 BlurRadius BlurSamplingRate LiquidEnabled 必须跟控件当前值一致
+        // 键为 (BlurRadius, BlurSamplingRate, LiquidEnabled)，必须与控件当前值一致
         var key = (border.BlurRadius, border.BlurSamplingRate, false);
         type.GetField("_cachedEffect", flags)!.SetValue(border, effect);
         type.GetField("_cachedEffectKey", flags)!.SetValue(border, key);
@@ -120,13 +131,14 @@ public class BlurBorderProbeTest
         {
             var root = new Grid { Width = w, Height = h };
 
+            // 背景层：真实照片，铺满
             root.Children.Add(new System.Windows.Controls.Image
             {
                 Source = Photo() ?? throw new AssertFailedException("找不到测试照片"),
                 Stretch = Stretch.UniformToFill
             });
 
-            // 被测层跟卡片同构 外层 Grid 带半透明底色 里面的 BlurBorder 负责玻璃
+            // 被测层：与卡片同构 —— 外层 Grid 带半透明底色，内部 BlurBorder 承担玻璃
             var card = new Grid
             {
                 Width = w * 0.72,
@@ -164,7 +176,6 @@ public class BlurBorderProbeTest
                 Thread.Sleep(250);
                 Pump();
 
-                // 等画面稳下来再抓 连续两帧差异够小就算稳了
                 byte[]? prev = null;
                 byte[] cur = [];
                 for (var i = 0; i < 6; i++)
@@ -233,9 +244,9 @@ public class BlurBorderProbeTest
         bmp.Save(Path.Combine(dir, name + ".png"), ImageFormat.Png);
     }
 
-    // 在真实 BlurBorder 上跑液态玻璃 导几张对照图出来 顺便量一下卡片内部有没有发生折射
+    /// <summary>真实 BlurBorder 上的液态玻璃：导出对照图并测量卡片内部的折射是否发生。</summary>
     [TestMethod]
-    public void LiquidGlassOnRealBlurBorder()
+    public void 真实BlurBorder上的液态玻璃()
     {
         const int w = 720, h = 480;
 
@@ -247,7 +258,7 @@ public class BlurBorderProbeTest
         Console.WriteLine($"折射150 vs 无玻璃 = {Diff(plain, glassOn):P1}");
         Console.WriteLine($"折射150 vs 折射0  = {Diff(glassOff, glassOn):P1}");
 
-        // 只算卡片内部避开外框 要是差值等于 0 说明玻璃压根没作用到卡片上
+        // 卡片内部区域（避开外框）的差异：若为 0，说明玻璃根本没有作用在卡片上
         var stride = w * 4;
         double Inner(byte[] a, byte[] b)
         {
@@ -269,4 +280,6 @@ public class BlurBorderProbeTest
 
         Console.WriteLine($"卡片内部：折射150 vs 折射0 = {Inner(glassOff, glassOn):F2}（应显著大于 0）");
     }
+
+    // Dispatcher 线程辅助：SetAssemblyLoadContextAware 在旧版框架才需要，这里仅占位
 }

@@ -6,15 +6,15 @@ namespace PCL.Core.App;
 // ReSharper disable InconsistentNaming
 public static class Secrets
 {
-    // 注入不到就用兜底 见 RemixSecrets
-    public static string MSOAuthClientId { get; } =
-        EnvironmentInterop.GetSecret("MS_CLIENT_ID", readEnvDebugOnly: true).ReplaceNullOrEmpty()
-            is { Length: > 0 } id ? id : RemixSecrets.MSOAuthClientId;
+    /// <summary>
+    /// 微软 OAuth 的 Client ID
+    /// </summary>
+    public static string MSOAuthClientId { get; } = EnvironmentInterop.GetSecret("MS_CLIENT_ID", readEnvDebugOnly: true).ReplaceNullOrEmpty();
 
-    // 同上
-    public static string CurseForgeAPIKey { get; } =
-        EnvironmentInterop.GetSecret("CURSEFORGE_API_KEY", readEnvDebugOnly: true).ReplaceNullOrEmpty()
-            is { Length: > 0 } key ? key : RemixSecrets.CurseForgeApiKey;
+    /// <summary>
+    /// CurseForge API 的 Client ID
+    /// </summary>
+    public static string CurseForgeAPIKey { get; } = EnvironmentInterop.GetSecret("CURSEFORGE_API_KEY", readEnvDebugOnly: true).ReplaceNullOrEmpty();
 
     /// <summary>
     /// 遥测密钥

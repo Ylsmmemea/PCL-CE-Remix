@@ -4,16 +4,23 @@ using System.Windows.Media;
 
 namespace PCL.Core.UI.Controls;
 
-// 毛玻璃面板 模糊强度自动跟随全局设置 关掉毛玻璃时整个隐藏
-// 界面里需要玻璃质感的面板统一用这个 别各自去调 BlurBorder
+/// <summary>
+///     毛玻璃面板。<br/>
+///     与 <see cref="BlurBorder"/> 的区别是模糊强度自动跟随全局的毛玻璃强度设置，
+///     并在关闭时隐藏自身，供界面中所有需要玻璃质感的面板统一使用。
+/// </summary>
 public class GlassBorder : BlurBorder
 {
-    // 玻璃面的填充色 毛玻璃开着的时候用它
+    /// <summary>
+    ///     玻璃表面的填充色。开启毛玻璃时使用半透明的玻璃色，否则回退到指定的常规色。
+    /// </summary>
     public static readonly DependencyProperty GlassBackgroundProperty = DependencyProperty.Register(
         nameof(GlassBackground), typeof(Brush), typeof(GlassBorder),
         new PropertyMetadata(null, _GlassBackgroundChanged));
 
-    // 毛玻璃关掉之后的常规填充色
+    /// <summary>
+    ///     关闭毛玻璃时使用的填充色。
+    /// </summary>
     public static readonly DependencyProperty FallbackBackgroundProperty = DependencyProperty.Register(
         nameof(FallbackBackground), typeof(Brush), typeof(GlassBorder),
         new PropertyMetadata(null, _GlassBackgroundChanged));
@@ -30,7 +37,9 @@ public class GlassBorder : BlurBorder
         set => SetValue(FallbackBackgroundProperty, value);
     }
 
-    // 全局毛玻璃强度 由 UiGlassValue 广播下来 0 表示关闭
+    /// <summary>
+    ///     全局毛玻璃强度（由 <c>UiGlassValue</c> 广播）。0 表示关闭。
+    /// </summary>
     public static readonly DependencyProperty GlassRadiusProperty = DependencyProperty.Register(
         nameof(GlassRadius), typeof(double), typeof(GlassBorder),
         new PropertyMetadata(0d, _GlassRadiusChanged));

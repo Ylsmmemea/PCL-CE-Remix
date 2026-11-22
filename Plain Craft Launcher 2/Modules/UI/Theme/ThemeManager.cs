@@ -71,6 +71,11 @@ public static class ThemeManager
     }
 
     // 通用ContextMenu主题刷新
+    /// <summary>
+    ///     注册右键菜单的主题刷新钩子。<br/>
+    ///     菜单样式在每次打开时由 <see cref="OnContextMenuOpened"/> 重新应用，
+    ///     因此无需在切换配色时递归遍历整个视觉树。
+    /// </summary>
     private static void RefreshAllContextMenuThemes()
     {
         try

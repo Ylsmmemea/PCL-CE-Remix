@@ -8,9 +8,13 @@ namespace PCL.Core.UI.Effects;
 
 // ReSharper disable UnusedMember.Local, UnusedParameter.Local
 
-// 液态玻璃 在模糊的基础上沿边缘对背景做置换采样 做出水滴那种折射
-// 中心相对清晰 扭曲都集中在边缘
-// 着色器源码在 UI/Assets/Shaders/LiquidGlass.hlsl 用同目录的 ShaderCompiler 编成 .ps
+/// <summary>
+///     液态玻璃效果。<br/>
+///     在模糊的基础上，沿边缘对背景做置换采样产生折射，形成类似水滴/厚玻璃的质感；
+///     中心区域保持相对清晰，扭曲集中在边缘。<br/>
+///     着色器源码见 <c>UI/Assets/Shaders/LiquidGlass.hlsl</c>，
+///     用同目录 <c>ShaderCompiler</c> 工具编译成 <c>LiquidGlass.ps</c>。
+/// </summary>
 public sealed class LiquidGlassEffect : ShaderEffect
 {
     private const string PixelShaderUri =
@@ -37,74 +41,89 @@ public sealed class LiquidGlassEffect : ShaderEffect
         UpdateShaderValue(TintProperty);
         UpdateShaderValue(OpacityProperty);
         UpdateShaderValue(CornerRadiusProperty);
-        UpdateShaderValue(ScrimAlphaProperty);
     }
 
     #region 属性
 
+    /// <summary>
+    ///     输入背景。
+    /// </summary>
     public Brush Input
     {
         get => (Brush)GetValue(InputProperty);
         set => SetValue(InputProperty, value);
     }
 
+    /// <summary>
+    ///     基础模糊半径（像素）。
+    /// </summary>
     public double BlurAmount
     {
         get => (double)GetValue(BlurAmountProperty);
         set => SetValue(BlurAmountProperty, value);
     }
 
-    // 折射强度 控制背景在边缘处被位移多少
+    /// <summary>
+    ///     折射强度，控制背景在边缘处被位移的程度。
+    /// </summary>
     public double Refraction
     {
         get => (double)GetValue(RefractionProperty);
         set => SetValue(RefractionProperty, value);
     }
 
-    // 边缘折射厚度 越大扭曲往中心延伸得越多
+    /// <summary>
+    ///     边缘折射厚度。越大则扭曲向中心延伸得越多。
+    /// </summary>
     public double RefThickness
     {
         get => (double)GetValue(RefThicknessProperty);
         set => SetValue(RefThicknessProperty, value);
     }
 
+    /// <summary>
+    ///     边缘高光强度。
+    /// </summary>
     public double Glare
     {
         get => (double)GetValue(GlareProperty);
         set => SetValue(GlareProperty, value);
     }
 
+    /// <summary>
+    ///     输入纹理尺寸，用于计算纹素大小。
+    /// </summary>
     public Point TextureSize
     {
         get => (Point)GetValue(TextureSizeProperty);
         set => SetValue(TextureSizeProperty, value);
     }
 
-    // rgb 是颜色 a 是混合量
+    /// <summary>
+    ///     色调叠加。<c>rgb</c> 为颜色，<c>a</c> 为混合量。
+    /// </summary>
     public Color Tint
     {
         get => (Color)GetValue(TintProperty);
         set => SetValue(TintProperty, value);
     }
 
+    /// <summary>
+    ///     整体不透明度。
+    /// </summary>
     public double Opacity
     {
         get => (double)GetValue(OpacityProperty);
         set => SetValue(OpacityProperty, value);
     }
 
-    // 面板圆角半径 像素 圆角矩形 SDF 靠它贴合控件真实轮廓
+    /// <summary>
+    ///     面板圆角半径（像素）。用于圆角矩形 SDF，使折射带贴合控件真实轮廓。
+    /// </summary>
     public double CornerRadius
     {
         get => (double)GetValue(CornerRadiusProperty);
         set => SetValue(CornerRadiusProperty, value);
-    }
-
-    // 磨砂灰层的不透明度 0 表示不叠灰
-    public double ScrimAlpha
-    {
-        get => (double)GetValue(ScrimAlphaProperty);
-        set => SetValue(ScrimAlphaProperty, value);
     }
 
     #endregion
@@ -118,9 +137,9 @@ public sealed class LiquidGlassEffect : ShaderEffect
         DependencyProperty.Register(nameof(BlurAmount), typeof(double), typeof(LiquidGlassEffect),
             new UIPropertyMetadata(8.0, PixelShaderConstantCallback(0)));
 
-    // 下面几个默认值都是像素单位 跟 LiquidGlass.hlsl 里的定义对齐
-    // 早期这里用过 UV 比例单位 也就是 0.03 那种 谁直接 new 出来不赋值会得到几乎为零的折射
-    // 正常路径走 BlurBorder._CreateLiquidGlassEffect
+    // 以下默认值均为「像素」单位，与 LiquidGlass.hlsl 的参数定义保持一致。
+    // 早期版本这里用的是 UV 比例单位（如 0.03），若被直接实例化而不显式赋值，
+    // 会得到几乎为零的折射。正常路径由 BlurBorder._CreateLiquidGlassEffect() 赋值。
     public static readonly DependencyProperty RefractionProperty =
         DependencyProperty.Register(nameof(Refraction), typeof(double), typeof(LiquidGlassEffect),
             new UIPropertyMetadata(30.0, PixelShaderConstantCallback(1)));
@@ -133,8 +152,8 @@ public sealed class LiquidGlassEffect : ShaderEffect
         DependencyProperty.Register(nameof(Glare), typeof(double), typeof(LiquidGlassEffect),
             new UIPropertyMetadata(0.35, PixelShaderConstantCallback(3)));
 
-    // 寄存器编号必须跟 LiquidGlass.hlsl 的声明严格对上
-    // Point 只占一个常量寄存器 填在 .x 和 .y 所以 Tint 从 C5 开始而不是 C6
+    // 寄存器编号必须与 LiquidGlass.hlsl 的声明严格一致。
+    // Point 类型只占一个常量寄存器（填在 .x/.y），因此 Tint 从 C5 开始而不是 C6。
     public static readonly DependencyProperty TextureSizeProperty =
         DependencyProperty.Register(nameof(TextureSize), typeof(Point), typeof(LiquidGlassEffect),
             new UIPropertyMetadata(new Point(1920, 1080), PixelShaderConstantCallback(4)));
@@ -147,21 +166,23 @@ public sealed class LiquidGlassEffect : ShaderEffect
         DependencyProperty.Register(nameof(Opacity), typeof(double), typeof(LiquidGlassEffect),
             new UIPropertyMetadata(1.0, PixelShaderConstantCallback(6)));
 
-    // C7 往后是扩展位 PS 3.0 允许 c0 到 c223 PixelShaderConstantCallback(N) 直接映射到 cN
+    // C7 起为后续扩展位：PS 3.0 允许 c0~c223，WPF 的 PixelShaderConstantCallback(N)
+    // 直接映射到 cN，因此新增参数不会与 C4 的「float2 占一个寄存器」约束冲突。
     public static readonly DependencyProperty CornerRadiusProperty =
         DependencyProperty.Register(nameof(CornerRadius), typeof(double), typeof(LiquidGlassEffect),
             new UIPropertyMetadata(5.0, PixelShaderConstantCallback(7)));
-
-    public static readonly DependencyProperty ScrimAlphaProperty =
-        DependencyProperty.Register(nameof(ScrimAlpha), typeof(double), typeof(LiquidGlassEffect),
-            new UIPropertyMetadata(0.0, PixelShaderConstantCallback(8)));
 
     #endregion
 
     #region Shader 初始化与克隆
 
-    // pack 方案是 Application 构造时才注册的 在那之前解析 pack URI 会抛 UriFormatException
-    // 万一首次访问赶在注册之前 静态构造会永远停在没着色器的状态 所以主动触发一次注册再重试
+    /// <summary>
+    ///     构造着色器资源 URI。<br/>
+    ///     <c>pack://</c> 方案由 WPF 在 <see cref="System.Windows.Application"/> 构造时注册，
+    ///     在此之前解析 pack URI 会抛 <see cref="UriFormatException"/>。<br/>
+    ///     一旦首次访问发生在注册之前，静态构造会永久停留在「无着色器」状态，
+    ///     因此这里主动触发一次 pack 方案注册后重试。
+    /// </summary>
     private static Uri _CreateShaderUri()
     {
         try
@@ -170,7 +191,7 @@ public sealed class LiquidGlassEffect : ShaderEffect
         }
         catch (UriFormatException)
         {
-            // 碰一下 PackUriHelper 的静态成员就能触发它注册 pack 方案
+            // 访问 PackUriHelper 的任意静态成员都会触发其静态构造并注册 pack 方案
             _ = System.IO.Packaging.PackUriHelper.UriSchemePack;
             return new Uri(PixelShaderUri, UriKind.Absolute);
         }
@@ -191,13 +212,15 @@ public sealed class LiquidGlassEffect : ShaderEffect
             }
             catch
             {
-                // 着色器没加载上就退化成空着色器 调用方会回退到普通模糊
+                // 着色器缺失时退化为空着色器，由调用方回退到普通模糊
                 _cachedShader = new PixelShader();
             }
         }
     }
 
-    // 没加载成功时调用方应该退回普通模糊
+    /// <summary>
+    ///     着色器是否成功加载。未加载时调用方应回退到普通模糊。
+    /// </summary>
     public static bool IsShaderAvailable => _cachedShader?.UriSource is not null;
 
     protected override Freezable CreateInstanceCore() => new LiquidGlassEffect();
@@ -214,7 +237,6 @@ public sealed class LiquidGlassEffect : ShaderEffect
             Tint = source.Tint;
             Opacity = source.Opacity;
             CornerRadius = source.CornerRadius;
-            ScrimAlpha = source.ScrimAlpha;
         }
 
         base.CloneCore(sourceFreezable);

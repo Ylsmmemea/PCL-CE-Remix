@@ -56,54 +56,12 @@ internal sealed class CrashReportExporter
         }
     }
 
-    // 报告里那几份文件的内容 跟导出用的是同一套攒法 只是不打包
-    // 喂给 AI 的那份清单必须跟用户能导出的报告一致 不然会漏掉环境和模组列表这些关键信息
-    internal static List<(string FileName, string Content)> BuildFiles(
-        CrashAnalysisContext context,
-        IEnumerable<string>? extraFiles)
-    {
-        var reportFolder = Path.Combine(context.TempFolder, ReportFolderName);
-
-        if (Directory.Exists(reportFolder))
-            CrashFileIo.DeleteDirectory(reportFolder);
-
-        Directory.CreateDirectory(reportFolder);
-
-        try
-        {
-            var names = new List<string>();
-
-            foreach (var outputFile in _CollectOutputFiles(context, extraFiles))
-            {
-                var copied = _CopyFileToReport(reportFolder, outputFile);
-                if (copied is not null) names.Add(copied);
-            }
-
-            _WriteEnvironmentInfo(reportFolder);
-            names.Add(EnvironmentFileName);
-
-            _WriteModInfo(reportFolder, context.Instance);
-            if (File.Exists(Path.Combine(reportFolder, ModInfoFileName)))
-                names.Add(ModInfoFileName);
-
-            return names
-                .Select(name => Path.Combine(reportFolder, name))
-                .Where(File.Exists)
-                .Select(path => (Path.GetFileName(path), CrashFileIo.ReadText(path)))
-                .ToList();
-        }
-        finally
-        {
-            CrashFileIo.DeleteDirectory(reportFolder);
-        }
-    }
-
-    private static string? _CopyFileToReport(
+    private static void _CopyFileToReport(
         string reportFolder,
         string outputFile)
     {
         if (!File.Exists(outputFile))
-            return null;
+            return;
 
         var fileName = _GetExportFileName(outputFile, out var fileEncoding);
 
@@ -118,7 +76,6 @@ internal sealed class CrashReportExporter
             fileEncoding);
 
         LogWrapper.Info("Crash", $"导出文件：{fileName}，编码：{fileEncoding.HeaderName}");
-        return fileName;
     }
 
     private static string _GetExportFileName(

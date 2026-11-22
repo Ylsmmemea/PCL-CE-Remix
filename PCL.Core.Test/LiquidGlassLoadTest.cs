@@ -7,13 +7,17 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace PCL.Core.Test;
 
-// 验证液态玻璃着色器的加载链路
-//
-// 加载失败会被 catch 静默吞掉 界面上只表现为液态玻璃开关没反应 跟普通毛玻璃一模一样 极难排查
-// 所以把这条路径显式钉住
-//
-// 必须在真实的 Application 环境下测 pack 方案是 WPF 启动应用时才注册的
-// 在那之前解析 pack URI 会抛异常 而静态构造只跑一次 一旦赶在注册之前就永久退化了
+/// <summary>
+///     验证液态玻璃着色器的加载链路。<br/>
+///     <para>
+///     着色器加载失败时会被 <c>catch</c> 静默吞掉，界面上的表现仅仅是「液态玻璃开关没反应、
+///     和普通毛玻璃一模一样」—— 极难排查。这里把加载路径显式钉住。
+///     </para>
+///     <para>
+///     必须在真实 <see cref="Application"/> 环境下验证：<c>pack://</c> 方案由 WPF 在应用启动时
+///     注册，在此之前解析 pack URI 会抛异常，而静态构造只执行一次，一旦赶在注册之前就永久退化。
+///     </para>
+/// </summary>
 [TestClass]
 public class LiquidGlassLoadTest
 {
@@ -58,7 +62,7 @@ public class LiquidGlassLoadTest
     }
 
     [TestMethod]
-    public void ShaderResourceShouldBePackaged()
+    public void 着色器资源必须已打包()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
@@ -77,10 +81,13 @@ public class LiquidGlassLoadTest
         }
     }
 
-    // 最关键的一条 IsShaderAvailable 为 false 时 BlurBorder 会静默退回普通模糊
-    // 液态玻璃那套折射逻辑一点都不执行
+    /// <summary>
+    ///     这是最关键的一条：<c>IsShaderAvailable</c> 为 <c>false</c> 时，
+    ///     <c>BlurBorder.CreateOptimizedBlurEffect()</c> 会静默回退到普通模糊，
+    ///     液态玻璃的全部折射逻辑都不会执行。
+    /// </summary>
     [TestMethod]
-    public void ShaderShouldActuallyLoadInsteadOfSilentlyFallingBack()
+    public void 着色器必须真的加载成功而不是静默退化()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
@@ -91,9 +98,11 @@ public class LiquidGlassLoadTest
             "液态玻璃着色器未能加载 —— 折射不会生效，卡片会退化成普通毛玻璃");
     }
 
-    // 直接 new 一个 PixelShader 看编译产物本身是不是有效 排除空壳和坏二进制
+    /// <summary>
+    ///     直接构造 <see cref="PixelShader"/> 验证编译产物本身有效（而非空壳或损坏的二进制）。
+    /// </summary>
     [TestMethod]
-    public void CompiledOutputShouldBeValidPixelShader()
+    public void 编译产物必须是有效的像素着色器()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 

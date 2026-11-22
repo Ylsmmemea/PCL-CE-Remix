@@ -315,12 +315,6 @@ public partial class PageSetupLeft
                     ModMain.frmSetupLauncherMisc = new PageSetupLauncherMisc();
                 return ModMain.frmSetupLauncherMisc;
             }
-            case FormMain.PageSubType.SetupAI:
-            {
-                if (ModMain.frmSetupAI is null)
-                    ModMain.frmSetupAI = new PageSetupAI();
-                return ModMain.frmSetupAI;
-            }
             case FormMain.PageSubType.SetupJava:
             {
                 if (ModMain.frmSetupJava is null)

@@ -244,8 +244,11 @@ public partial class MyExtraTextButton
         RefreshColor(); // 直接刷新颜色以判断是否已触发 MouseLeave
     }
 
-    // 底色不透明度 按钮文字是 ColorBrush8 这类浅色 底色得挡住后面的壁纸才看得清
-    // 所以不能像卡片那样近乎全透明 留四成左右让玻璃的模糊和折射透出来
+    /// <summary>
+    ///     底色不透明度。按钮文字用的是 <c>ColorBrush8</c> 这类浅色，
+    ///     底色必须挡住背后的壁纸才能保证可读，所以不能像卡片那样近乎全透明 ——
+    ///     留出约四成让玻璃的模糊与折射透出来。
+    /// </summary>
     private const double GlassTintAlpha = 0.62d;
 
     public void RefreshColor()
@@ -255,7 +258,7 @@ public partial class MyExtraTextButton
             var res = !IsEnabled ? "ColorBrushGray4" : IsMouseOver ? "ColorBrush4" : "ColorBrush3";
             var target = new ModBase.MyColor(GlassTintAlpha,
                 new ModBase.MyColor(System.Windows.Application.Current.FindResource(res)));
-            // 动画动的是画刷实例的 Color 所以这里传的是目标色减当前色的增量
+            // 动画对象是画刷实例的 Color，所以这里传的是「目标色 - 当前色」的增量
             var delta = target - new ModBase.MyColor(PanColor.Background);
             var duration = !IsEnabled || IsMouseOver ? animationColorIn : animationColorOut;
 

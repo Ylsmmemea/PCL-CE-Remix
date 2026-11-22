@@ -26,7 +26,7 @@ public class MyCard : AnimatedBackgroundGrid
     {
         var card = (MyCard)d;
         var radius = (double)e.NewValue;
-        // 构造期间 mainBorder 还没建出来 先记下来 构造完再应用
+        // 构造过程中 mainBorder 尚未就绪，此时先记录，待构造完成后再应用
         if (card.mainBorder is null)
         {
             card._pendingGlassRadius = radius;
@@ -36,9 +36,11 @@ public class MyCard : AnimatedBackgroundGrid
         card._ApplyGlassRadius(radius);
     }
 
-    // 应用毛玻璃半径
-    // 只动模糊半径 背景色统一由 ColorBrushCardBackground 资源给
-    // 不然会跟基类 AnimatedBackgroundGrid 的颜色动画互相覆盖 来回闪
+    /// <summary>
+    ///     应用毛玻璃半径。<br/>
+    ///     仅调整模糊半径，背景色由全局资源 <c>ColorBrushCardBackground</c> 统一提供，
+    ///     避免与基类 <see cref="AnimatedBackgroundGrid"/> 的颜色动画互相覆盖而闪烁。
+    /// </summary>
     private void _ApplyGlassRadius(double radius)
     {
         if (Math.Abs(mainBorder.BlurRadius - radius) < 0.01d)
@@ -50,7 +52,9 @@ public class MyCard : AnimatedBackgroundGrid
     private readonly BlurBorder mainBorder;
     private double _pendingGlassRadius;
 
-    // 卡片毛玻璃的模糊半径 0 表示不启用
+    /// <summary>
+    ///     卡片毛玻璃的模糊半径，0 表示不启用。
+    /// </summary>
     public double GlassRadius
     {
         get => (double)GetValue(GlassRadiusProperty);
@@ -76,7 +80,8 @@ public class MyCard : AnimatedBackgroundGrid
         Children.Insert(1, mainBorder);
         mainGrid = new Grid();
         Children.Add(mainGrid);
-        // 背景色具体取什么由 ColorBrushCardBackground 决定 开毛玻璃时那个资源会换成玻璃填充色
+        // 设置背景色。具体取值由 ColorBrushCardBackground 资源决定，
+        // 毛玻璃开启时该资源会被替换为玻璃填充色。
         SetResourceReference(BackgroundBrushProperty, "ColorBrushCardBackground");
         Loaded += (_, _) => Init();
         MouseEnter += MyCard_MouseEnter;
@@ -85,7 +90,7 @@ public class MyCard : AnimatedBackgroundGrid
         MouseLeftButtonDown += MyCard_MouseLeftButtonDown;
         MouseLeftButtonUp += MyCard_MouseLeftButtonUp;
         MouseLeave += MyCard_MouseLeave_Swap;
-        // 把构造期间收到的那次毛玻璃半径补上
+        // 应用在构造期间（尚未创建 mainBorder 时）收到的毛玻璃半径
         if (_pendingGlassRadius != 0d)
         {
             _ApplyGlassRadius(_pendingGlassRadius);

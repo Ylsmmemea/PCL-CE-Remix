@@ -115,28 +115,35 @@ public class BlurBorder : Border
 
     private void ParentLayoutUpdated(object? sender, EventArgs e)
     {
-        // 布局更新非常频繁 滚动 悬停动画 卡片高度变化都会触发
-        // 真正要不要重采交给 RequestRender 里的几何比对
+        // 布局更新极为频繁（滚动、悬停动画、卡片高度变化等都会触发），
+        // 因此先比对自身相对窗口的位置与尺寸，未发生变化时无需重新采样背景。
         RequestRender();
     }
 
     private bool _renderPending;
     private bool _forceNextRender;
 
-    // 上次渲染时相对窗口的位置和尺寸 用来跳过没意义的重复渲染
+    /// <summary>
+    ///     上次渲染时的位置（相对窗口）与尺寸，用于跳过无意义的重复渲染。
+    /// </summary>
     private Rect _lastRenderBounds = Rect.Empty;
 
-    // 上一次采集成没成功 false 表示祖先不可见或者正在布局 画面上什么都没有
+    /// <summary>
+    ///     上一次采集是否有效。<c>false</c> 表示祖先不可见或正在布局，画面上什么都没有。
+    /// </summary>
     private bool _lastCaptureOk = true;
 
-    // 采集连续失败了几次 免得在异常状态下无限重绘
+    /// <summary>采集失败后的连续重试次数，用于避免在异常状态下无限重绘。</summary>
     private int _captureRetry;
 
-    // 每重试一次就是一次完整的背景采集 代价不低 所以上限取小值
-    // 布局时序问题一般一两帧内自己就好了 超过 3 次说明本来就没内容可采
+    // 每次重试都是一次完整的背景采集，代价不低，因此上限取小值：
+    // 布局时序问题通常在 1~2 帧内自解，超过 3 次说明本来就没有可采的内容。
     private const int MaxCaptureRetry = 3;
 
-    // 活着的毛玻璃实例 背景内容变了要一起失效 用弱引用 免得挡住控件回收
+    /// <summary>
+    ///     存活中的毛玻璃实例，用于在背景内容变化时统一失效。<br/>
+    ///     使用弱引用，避免阻止控件被回收。
+    /// </summary>
     private static readonly List<WeakReference<BlurBorder>> _instances = [];
 
     private static readonly object _instancesLock = new();
@@ -145,14 +152,19 @@ public class BlurBorder : Border
     {
         lock (_instancesLock)
         {
-            // 顺手清掉已经回收的实例
+            // 顺带清理已回收的实例
             _instances.RemoveAll(reference => !reference.TryGetTarget(out _));
             _instances.Add(new WeakReference<BlurBorder>(this));
         }
     }
 
-    // 让所有毛玻璃层失效并重新采背景 换壁纸 换主题配色这种几何没变但背后内容变了的情况用
-    // invalidateEffect 传 true 会顺带清掉效果缓存 液态玻璃参数变化时要传
+    /// <summary>
+    ///     使所有毛玻璃层失效并重新采样背景。<br/>
+    ///     用于壁纸切换、主题配色变化等「几何未变但背后内容已变」的情形。
+    /// </summary>
+    /// <param name="invalidateEffect">
+    ///     是否同时使效果缓存失效。液态玻璃参数变化时需传 <c>true</c> 以重新读取配置。
+    /// </param>
     public static void InvalidateAllBackgrounds(bool invalidateEffect = false)
     {
         List<BlurBorder> alive;
@@ -177,14 +189,18 @@ public class BlurBorder : Border
             }
             catch
             {
-                // 一个实例失效不能连累其他实例
+                // 单个实例失效不应影响其余实例
             }
         }
     }
 
-    // 请求重绘模糊背景
-    // 重绘要遍历并重新采样父级视觉树 开销不小 所以关掉毛玻璃直接跳过 同一帧内的多次请求合并
-    // 位置和尺寸都没变也跳过 布局更新的次数远多于真正的视觉变化
+    /// <summary>
+    ///     请求重绘模糊背景。<br/>
+    ///     重绘需要遍历并重新采样父级视觉树，开销较大，因此：
+    ///     1. 关闭毛玻璃时直接跳过；
+    ///     2. 合并同一帧内的多次请求；
+    ///     3. 位置与尺寸均未变化时跳过（布局更新次数远多于实际的视觉变化）。
+    /// </summary>
     private void RequestRender()
     {
         if (_renderPending || BlurRadius <= 0d)
@@ -197,7 +213,7 @@ public class BlurBorder : Border
 
             if (BlurRadius <= 0d || !IsVisible)
             {
-                // 不可见就不渲染 丢掉几何记录 重新可见时必然重绘一次
+                // 不可见时不渲染，并丢弃几何记录，以便重新可见时必定重绘一次
                 _lastRenderBounds = Rect.Empty;
                 return;
             }
@@ -211,10 +227,15 @@ public class BlurBorder : Border
         }));
     }
 
-    // 采集一次 按结果决定要不要记录几何
-    // 不能无条件记录 采集可能因为祖先正在布局或者祖先不可见而静默失败 那时候画面上什么都没有
-    // 要是照常把当前几何记成已渲染 之后每次 RequestRender 都会因为几何没变而跳过
-    // 这层玻璃就永久空白 直到位置或尺寸碰巧变一次 用户看到的就是液态玻璃时有时无 动一下窗口才出来
+    /// <summary>
+    ///     执行一次采集，并按结果决定是否记录几何。<br/>
+    ///     <para>
+    ///     <b>为什么不能无条件记录：</b>采集可能因「祖先正在布局 / 祖先不可见」而静默失败，
+    ///     此时画面里什么都没有。若照常把当前几何记为已渲染，之后每次 <see cref="RequestRender"/>
+    ///     都会因「几何未变」而跳过 —— 这一层玻璃就永久空白，直到它的位置或尺寸碰巧改变为止。
+    ///     用户看到的现象就是「液态玻璃时有时无，动一下窗口才出来」。
+    ///     </para>
+    /// </summary>
     private void _RenderNow(Rect bounds)
     {
         BackgroundPresenter.ForceRender(this);
@@ -237,19 +258,22 @@ public class BlurBorder : Border
 
         if (++_captureRetry > MaxCaptureRetry)
         {
-            // 一直失败说明不是布局时序的问题 别重试了 免得空转
+            // 持续失败说明不是布局时序问题，放弃重试以免空转
             _captureRetry = 0;
             _lastRenderBounds = bounds;
             return;
         }
 
-        // 保留旧几何并强制下一次请求过几何检查 等于下一帧再试一次
+        // 保留旧几何并强制下一次请求通过几何检查，等价于「下一帧重试一次」
         _forceNextRender = true;
         RequestRender();
     }
 
-    // 数一下这个元素到视觉树根有多少层祖先
-    // 背景采集向上遍历的上限是 MaxDepth 超了就采不到壁纸那一层 玻璃整块透明 所以要跟上限一起看
+    /// <summary>
+    ///     统计该元素到视觉树根的祖先层数。<br/>
+    ///     背景采集向上遍历的上限是 <see cref="MaxDepth"/>，超限就采不到壁纸所在的层级，
+    ///     玻璃会渲染成完全透明 —— 因此这个值需要与上限一起观察。
+    /// </summary>
     internal static int AncestorDepth(Visual visual)
     {
         var depth = 0;
@@ -260,14 +284,16 @@ public class BlurBorder : Border
         return depth;
     }
 
-    // 强制重绘 不走几何比对和合并
-    // 模糊参数变化 背后内容变化这种靠几何判断不出来的情况用它
+    /// <summary>
+    ///     请求强制重绘，忽略几何比对与合并逻辑。<br/>
+    ///     用于模糊参数变化、背后内容变化等无法通过几何判断的情形。
+    /// </summary>
     private void RequestForceRender()
     {
         _forceNextRender = true;
 
-        // 不直接走 RequestRender 它碰到已有待处理请求或者半径为 0 就直接返回了
-        // 几何永不变化的元素比如导航栏和卡片会错过这次参数变化 之后不再重绘
+        // 不经过 RequestRender：后者在已有待处理请求或半径为 0 时会直接返回，
+        // 导致「几何永不变化」的元素（如导航栏、卡片）错过本次参数变化而不再重绘。
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
         {
             if (!_forceNextRender)
@@ -284,7 +310,9 @@ public class BlurBorder : Border
         }));
     }
 
-    // 取当前相对窗口的位置和尺寸
+    /// <summary>
+    ///     获取当前相对窗口的位置与尺寸。
+    /// </summary>
     private Rect _CurrentBounds()
     {
         var pos = new Point(0d, 0d);
@@ -297,7 +325,7 @@ public class BlurBorder : Border
             }
             catch
             {
-                // 视觉树还没就绪 忽略 退化成只比尺寸
+                // 视觉树尚未就绪时忽略，退化为仅比对尺寸
             }
         }
 
@@ -343,13 +371,13 @@ public class BlurBorder : Border
             return;
         }
 
-        // 尺寸是 0 就别建效果了 着色器靠 TextureSize 把像素换算成 UV
-        // 拿 0 去构建会被钳成 1 参数退化成没意义的 而且这次采集本来就是空的
-        // 侧边栏就是这样 宽度由子元素事后赋值 首次渲染时还是 0
+        // 尺寸为 0 时不要建立效果：着色器以 TextureSize 把像素换算成 UV，
+        // 拿 0（会被钳成 1）去构建会得到退化参数，而且这次采集注定是空的。
+        // 侧边栏就是这种情况 —— 它的宽度由子元素事后赋值，首次渲染时宽度还是 0。
         //
-        // 这里不能调 RequestRender 本方法返回前还没记录几何 请求立刻又会触发渲染
-        // 而尺寸还是 0 于是自旋 丢掉几何记录就行 尺寸变化本身会让元素重新渲染
-        // 到时候 RequestRender 的几何比对必然放行
+        // 这里不能调 RequestRender：本方法返回前没有记录几何，请求会立刻再次触发渲染，
+        // 而尺寸仍是 0，于是自旋。丢弃几何记录即可 —— 尺寸变化本身会让元素重新渲染，
+        // 届时 RequestRender 的几何比对必然放行。
         if (RenderSize.Width < 1d || RenderSize.Height < 1d)
         {
             _lastRenderBounds = Rect.Empty;
@@ -367,15 +395,16 @@ public class BlurBorder : Border
 
         using (DrawingContext visualContext = drawingVisual.RenderOpen())
         {
-            // 把采集内容裁到控件矩形再交给效果
+            // 把采集内容裁到控件矩形，再交给效果。
             //
-            // 只设 DrawingVisual.Clip 不够 Clip 是 Visual 级的属性
-            // 而 WPF 合成时先应用 Effect 后应用 Clip 着色器拿到的是没裁过的内容纹理
-            // 实测卡片控件 684x341 输入纹理却是 880x940 把左侧栏和整页内容都带上了
+            // 只设 DrawingVisual.Clip 不够：Clip 是 Visual 级属性，而 WPF 合成时先应用
+            // Effect、后应用 Clip，于是着色器拿到的是**未裁剪**的内容纹理。
+            // 实测卡片控件 684x341，输入纹理却是 880x940（含左侧栏与整页内容）。
             //
-            // 着色器算边缘距离时隐含假设 uv 的 0 到 1 就是控件范围
-            // 纹理一大折射带就落到纹理自己的边缘而不是控件边缘 效果出现在莫名其妙的位置或者干脆看不见
-            // 在绘制上下文里裁 内容边界才等于控件矩形 这个假设才成立
+            // 而着色器用 p = (uv - 0.5) * TextureSize 计算边缘距离，隐含假设
+            // 「uv 的 [0,1] 就是控件范围」。纹理一旦更大，折射带就落到纹理自身的边缘，
+            // 而不是控件的边缘 —— 表现为效果出现在莫名其妙的位置或干脆看不见。
+            // 在绘制上下文里裁剪，内容边界即等于控件矩形，这个假设才成立。
             visualContext.PushClip(
                 new RectangleGeometry(new Rect(0, 0, RenderSize.Width, RenderSize.Height)));
             _lastCaptureOk = BackgroundPresenter.DrawBackground(visualContext, this, _panelStack, MaxDepth, false);
@@ -401,29 +430,39 @@ public class BlurBorder : Border
         base.OnRender(dc);
     }
 
-    // 缓存的效果实例 OnRender 会被反复调 每次都新建的话临时对象太多
-    // 而且液态玻璃实例会被重复注册到动画器上 只在参数或模式变化时重建
+    /// <summary>
+    ///     缓存的效果实例。<br/>
+    ///     <see cref="OnRender"/> 会被反复调用，若每次都新建 <see cref="Effect"/> 会产生大量临时对象，
+    ///     并且液态玻璃实例还会被重复注册到动画器上。仅在参数或模式变化时重建。
+    /// </summary>
     private Effect? _cachedEffect;
 
-    // 缓存对应的参数指纹 用来判断要不要重建
+    /// <summary>
+    ///     缓存对应的参数指纹，用于判断是否需要重建。
+    /// </summary>
     private (double Radius, double Sampling, bool Liquid) _cachedEffectKey = (-1d, -1d, false);
 
-    // 让效果缓存失效 下次渲染重建 改完液态玻璃参数要调一下
+    /// <summary>
+    ///     使效果缓存失效，下次渲染时重建。<br/>
+    ///     用于液态玻璃参数变化等需要重新读取配置的情形。
+    /// </summary>
     public void InvalidateEffect()
     {
         _cachedEffectKey = (-1d, -1d, false);
         RequestForceRender();
     }
 
-    // 取效果实例 该重建就重建
+    /// <summary>
+    ///     获取效果实例，必要时重建。
+    /// </summary>
     private Effect _GetOrCreateEffect()
     {
         var key = (BlurRadius, BlurSamplingRate, PCL.Core.App.Config.Preference.Glass.LiquidEnabled);
         if (_cachedEffect is not null && key == _cachedEffectKey)
         {
-            // 缓存键里只有参数没有尺寸 而着色器靠 TextureSize 把像素换算成 UV
-            // 沿用旧尺寸的话折射范围和边缘厚度会整体错位 卡片展开折叠 窗口缩放之后
-            // 表现为整块面板扭曲异常 颜色发暗 所以每次取用都同步一次
+            // 缓存键只反映参数，尺寸不在其中。而着色器用 TextureSize 把像素单位换算成 UV，
+            // 若沿用旧尺寸，折射范围、边缘厚度会整体错位 —— 卡片展开/折叠、
+            // 窗口缩放后表现为整块面板扭曲异常、颜色发暗。因此每次取用都同步一次。
             _SyncEffectGeometry(_cachedEffect);
             return _cachedEffect;
         }
@@ -432,14 +471,18 @@ public class BlurBorder : Border
         _cachedEffectKey = key;
         _SyncEffectGeometry(_cachedEffect);
 
-        // 只在重建时打一条 正好覆盖切换液态玻璃开关的那一瞬间 重建完的类型和参数对不对一眼能看出来
+        // 每次重建效果时记录一次：正好覆盖「切换实验性开关 / 液态玻璃开关」这类
+        // 配置变化，可以直接看出重建后的效果类型与参数是否符合预期。
         DiagnoseGlass(this, _cachedEffect);
 
         return _cachedEffect;
     }
 
-    // 把玻璃控件的运行时状态打进日志 效果没生效时用来分辨是着色器的问题还是宿主的问题
-    // 只在效果重建的时候输出
+    /// <summary>
+    ///     把玻璃控件的运行时状态写入日志，用于定位「效果没有生效」到底是
+    ///     着色器问题还是宿主（配置 / 尺寸 / 参数）问题。<br/>
+    ///     仅在效果重建时输出，正好覆盖配置切换的瞬间。
+    /// </summary>
     private static void DiagnoseGlass(BlurBorder border, Effect effect)
     {
         try
@@ -453,8 +496,7 @@ public class BlurBorder : Border
 
             var extra = effect is LiquidGlassEffect lg
                 ? $" 折射={lg.Refraction:F0} 厚度={lg.RefThickness:F0} " +
-                  $"纹理={lg.TextureSize.X:F0}x{lg.TextureSize.Y:F0} 圆角={lg.CornerRadius:F1} " +
-                  $"模糊={lg.BlurAmount:F2} 灰层={lg.ScrimAlpha:F2}"
+                  $"纹理={lg.TextureSize.X:F0}x{lg.TextureSize.Y:F0} 圆角={lg.CornerRadius:F1} 模糊={lg.BlurAmount:F2}"
                 : "";
 
             var name = string.IsNullOrEmpty(border.Name) ? "(未命名)" : border.Name;
@@ -466,13 +508,16 @@ public class BlurBorder : Border
         }
         catch
         {
-            // 诊断挂了不能影响渲染
+            // 诊断失败不应影响渲染
         }
     }
 
-    // 同步液态玻璃要用的元素几何 纹理尺寸和圆角半径
-    // 这俩都不在缓存键里 而着色器靠它们把像素换算成 UV 和构造圆角矩形 SDF 沿用旧值会整体错位
-    // 值没变就不写 免得白白触发依赖属性通知
+    /// <summary>
+    ///     同步液态玻璃依赖的元素几何：纹理尺寸与圆角半径。<br/>
+    ///     二者都不在效果缓存的键里，但着色器用它们把像素换算成 UV / 构造圆角矩形 SDF；
+    ///     沿用旧值会让折射范围、边缘厚度、圆角位置整体错位。<br/>
+    ///     值未变化时不写入，避免无谓的依赖属性通知。
+    /// </summary>
     private void _SyncEffectGeometry(Effect effect)
     {
         if (effect is not LiquidGlassEffect liquid) return;
@@ -494,7 +539,7 @@ public class BlurBorder : Border
     /// </summary>
     private Effect CreateOptimizedBlurEffect()
     {
-        // 液态玻璃 折射加边缘高光 着色器加载不上就退回普通模糊
+        // 液态玻璃：折射 + 边缘高光。着色器不可用时回退到普通模糊。
         if (PCL.Core.App.Config.Preference.Glass.LiquidEnabled
             && LiquidGlassEffect.IsShaderAvailable)
             return _CreateLiquidGlassEffect();
@@ -529,31 +574,32 @@ public class BlurBorder : Border
         }
     }
 
-    // 按配置拼一个液态玻璃效果
+    /// <summary>
+    ///     创建液态玻璃效果，并按配置设置各参数。
+    /// </summary>
     private LiquidGlassEffect _CreateLiquidGlassEffect()
     {
         var glass = PCL.Core.App.Config.Preference.Glass;
         var effect = new LiquidGlassEffect
         {
-            // 磨砂强度走独立滑块 0 就是完全通透
-            // 它跟毛玻璃强度不是一回事 后者按普通磨砂玻璃标定 大约是 BlurRadius 的 0.6 倍 13px 上下
-            // 套到液态玻璃上会把细节整体抹平 折射和高光全被淹掉 退化成普通毛玻璃
-            // 滑块拉满也只到弱磨砂 材质感来自折射和边缘高光 模糊只是让主体看起来像一层介质
+            // 磨砂强度由独立滑块给出，0 为完全通透。它与「毛玻璃强度」是两回事：
+            // 后者是为普通磨砂玻璃标定的（BlurRadius × 0.6 ≈ 13px），
+            // 套在液态玻璃上会把细节整体抹平，折射与高光全被淹没，退化成普通毛玻璃。
+            // 即使滑块拉满也只到弱磨砂 —— 液态玻璃的材质感来自折射与边缘高光，
+            // 模糊只是让主体看起来像一层介质，而不是把内容糊掉。
             BlurAmount = Math.Clamp(glass.LiquidBlur, 0, 100) / 100d * MaxLiquidBlurPx,
-            // 折射强度按折射带宽的比例解释 着色器把滑块 0 到 150 映射到 0 到 0.62 倍带宽
-            // 位移上限受采样映射单调性约束 超了边缘会出现镜像重影
-            // 想要更明显就调边缘折射厚度 继续拉折射强度没有用
+            // 折射强度按「折射带宽的比例」解释：着色器把滑块 0~150 映射到 0~0.62×带宽。
+            // 位移上限受采样映射单调性约束（超出会在边缘产生镜像重影），
+            // 因此想要更强的效果应调高「边缘折射厚度」，而不是继续拉折射强度。
             Refraction = glass.LiquidRefraction,
             RefThickness = Math.Max(glass.LiquidRefThickness, 1),
             Glare = glass.LiquidGlare / 100d,
             TextureSize = new Point(
                 Math.Max(RenderSize.Width, 1d),
                 Math.Max(RenderSize.Height, 1d)),
-            // 不叠色调 保持背景原色
+            // 不叠加色调，保持背景原有颜色
             Tint = Color.FromArgb(0, 255, 255, 255),
-            Opacity = 1d,
-            // 磨砂较强时在玻璃主体下垫一层灰 把背景的明暗差拉平
-            ScrimAlpha = LiquidScrimAlpha(glass.LiquidBlur)
+            Opacity = 1d
         };
 
         return effect;
@@ -573,34 +619,31 @@ public class BlurBorder : Border
     public static readonly DependencyProperty ContentClipProperty =
         ContentClipPropertyKey.DependencyProperty;
 
-    // 背景采集向上遍历祖先的层数上限
-    // 上层库默认 16 对普通背景够用 但玻璃得采到壁纸那一层
-    // 实测卡片已经在第 15 层 页面嵌套加 PanMainRight 加 Border 加 PanMain 加 PanForm 只剩一层余量
-    // 页面再深一点就采不到壁纸 玻璃会整块渲染成透明 所以放宽到 64
-    // 遍历本身只是 GetParent 开销可以忽略 多画几层祖先内容本来就是玻璃该显示的东西
+    /// <summary>
+    ///     背景采集向上遍历祖先的层数上限。<br/>
+    ///     <para>
+    ///     上层库的默认值是 16，对普通背景采样够用，但玻璃必须采到壁纸所在的层级：
+    ///     实测卡片已经处在第 15 层（页面内部嵌套 + PanMainRight + Border + PanMain + PanForm），
+    ///     只剩一层余量，页面再深一点就采不到壁纸，玻璃会渲染成完全透明。
+    ///     </para>
+    ///     <para>
+    ///     这里放宽到 64：遍历本身只是 GetParent，代价可忽略；真正的开销在于多画的几层
+    ///     祖先内容，而那恰恰是玻璃应该呈现的东西。
+    ///     </para>
+    /// </summary>
     public static readonly DependencyProperty MaxDepthProperty =
         BackgroundPresenter.MaxDepthProperty.AddOwner(typeof(BlurBorder),
             new FrameworkPropertyMetadata(MaxAncestorDepth));
 
     internal const int MaxAncestorDepth = 64;
 
-    // 液态玻璃磨砂滑块满量程对应的模糊半径 像素 仍然是弱磨砂的量级
-    // 材质感主要来自折射和边缘高光 模糊只是让主体看起来像一层介质
-    // 着色器中心处还要乘 0.6 见 radius 的 lerp 所以满量程实际半径约 8.4px
+    /// <summary>
+    ///     液态玻璃磨砂滑块满量程对应的模糊半径（像素）。<br/>
+    ///     仍是「弱磨砂」量级 —— 液态玻璃的材质感主要来自折射与边缘高光，
+    ///     模糊只是让主体看起来像一层介质。着色器中心处取 0.6 倍（见 radius 的 lerp），
+    ///     因此满量程的实际半径约为 8.4px。
+    /// </summary>
     private const double MaxLiquidBlurPx = 14d;
-
-    // 灰层从磨砂强度 75% 开始介入 再低就完全不生效
-    // 轻度磨砂要的就是通透 蒙一层灰会把折射和边缘高光一起压掉 玻璃读成一块灰塑料
-    private const double ScrimStartPercent = 75d;
-
-    private const double MaxScrimAlpha = 0.40d;
-
-    // 按磨砂强度换算灰层不透明度 起点以下恒为 0 之后线性升到满量程
-    internal static double LiquidScrimAlpha(int liquidBlur)
-    {
-        var t = (Math.Clamp(liquidBlur, 0, 100) - ScrimStartPercent) / (100d - ScrimStartPercent);
-        return Math.Clamp(t, 0d, 1d) * MaxScrimAlpha;
-    }
 
     /// <summary>
     /// The radius of the blur effect applied to the background.

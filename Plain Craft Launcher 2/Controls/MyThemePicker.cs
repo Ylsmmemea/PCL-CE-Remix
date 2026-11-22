@@ -8,12 +8,19 @@ using PCL.Core.UI.Theme;
 
 namespace PCL;
 
-// 配色选择器 把可选配色摊成一片色块 点哪个切哪个 切的是当前明暗模式下的配色
+/// <summary>
+///     配色选择器。以色块网格的形式列出全部可选配色，点击即可切换当前明暗模式下的配色。
+/// </summary>
 public class MyThemePicker : WrapPanel
 {
+    /// <summary>
+    ///     色块尺寸。
+    /// </summary>
     private const double SwatchHeight = 32d;
 
-    // 可选配色 非愚人节不给 HmclBlue
+    /// <summary>
+    ///     可选配色列表。非愚人节时不提供 HmclBlue。
+    /// </summary>
     private static readonly ColorTheme[] Themes = Basics.IsAprilFool
         ? [ColorTheme.SkyBlue, ColorTheme.CatBlue, ColorTheme.DeathBlue, ColorTheme.Emerald,
            ColorTheme.Violet, ColorTheme.Rose, ColorTheme.Amber, ColorTheme.Teal,
@@ -28,16 +35,18 @@ public class MyThemePicker : WrapPanel
     {
         Orientation = Orientation.Horizontal;
         Loaded += (_, _) => Refresh();
-        // 亮暗模式或配色变了就重建色块 不然选中态和预览色都是旧的
+        // 亮暗模式或配色变化后重建色块，保证选中态与预览色正确
         ThemeService.ColorModeChanged += (_, _) => Dispatcher.Invoke(Refresh);
         ThemeService.ColorThemeChanged += _ => Dispatcher.Invoke(Refresh);
-        // 自定义颜色变了更新那一块
+        // 自定义颜色变化时更新「自定义」色块
         Config.Preference.Theme.CustomThemeColorConfig.Observe(
             new PCL.Core.App.Configuration.ConfigObserver(
                 PCL.Core.App.Configuration.ConfigEvent.Changed, _ => Dispatcher.Invoke(Refresh)));
     }
 
-    // 重建色块并同步选中状态
+    /// <summary>
+    ///     重建色块并同步选中状态。
+    /// </summary>
     public void Refresh()
     {
         Children.Clear();
@@ -59,6 +68,7 @@ public class MyThemePicker : WrapPanel
                 IsHitTestVisible = false,
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
+            // 依据色块亮度选择可读的文字颜色
             label.Foreground = _ContrastBrush(color);
 
             var swatch = new Border
@@ -68,10 +78,10 @@ public class MyThemePicker : WrapPanel
                 Margin = new Thickness(0d, 0d, 8d, 8d),
                 CornerRadius = new CornerRadius(5d),
                 Background = new SolidColorBrush(color),
-                // 边框厚度固定 切换选中态时尺寸不能变 一变就触发布局重算 布局一动毛玻璃层跟着闪
+                // 边框厚度固定，避免切换选中态时改变尺寸而触发布局重算（会波及毛玻璃层导致闪烁）
                 BorderThickness = new Thickness(2d),
-                // 选中态用白描边 以前用的是 ColorBrush1 主题里最暗那一档
-                // 深色配色下几乎就是黑框 压在饱和度高的色块上很突兀
+                // 选中态用白色描边。此前用 ColorBrush1（主题里最暗的一档），
+                // 在深色配色下几乎就是黑框，压在饱和度高的色块上很突兀。
                 BorderBrush = isSelected
                     ? Brushes.White
                     : new SolidColorBrush(Color.FromArgb(0x40, 0x80, 0x80, 0x80)),
@@ -86,7 +96,9 @@ public class MyThemePicker : WrapPanel
         }
     }
 
-    // 配色枚举到本地化 key 后缀 有几个枚举名跟历史文案的 key 对不上
+    /// <summary>
+    ///     配色枚举 → 本地化 key 后缀。部分枚举名与历史文案 key 不一致。
+    /// </summary>
     private static string ThemeKeyOf(ColorTheme theme) => theme switch
     {
         ColorTheme.DeathBlue => "CrashBlue",
@@ -94,10 +106,12 @@ public class MyThemePicker : WrapPanel
         _ => theme.ToString()
     };
 
-    // 按底色亮度挑一个能看清的文字颜色
+    /// <summary>
+    ///     依据背景色亮度返回可读的文字画刷。
+    /// </summary>
     private static Brush _ContrastBrush(Color background)
     {
-        // sRGB 相对亮度的简化加权
+        // 采用 sRGB 相对亮度的简化加权
         var luminance = (0.299d * background.R + 0.587d * background.G + 0.114d * background.B) / 255d;
         return luminance > 0.62d
             ? new SolidColorBrush(Color.FromRgb(0x1a, 0x1a, 0x1a))
@@ -106,7 +120,7 @@ public class MyThemePicker : WrapPanel
 
     private void _Select(ColorTheme theme)
     {
-        // 写当前明暗模式对应的那一项
+        // 写入当前明暗模式对应的配置项
         if (ThemeService.IsDarkMode)
             Config.Preference.Theme.DarkColor = theme;
         else
@@ -114,7 +128,7 @@ public class MyThemePicker : WrapPanel
 
         ThemeManager.ThemeRefresh();
         Refresh();
-        // 让设置页里自定义配色的面板重新判断要不要显示
+        // 通知设置页刷新自定义配色面板的可见性
         ModMain.frmSetupUI?.RefreshCustomThemePanel();
     }
 }

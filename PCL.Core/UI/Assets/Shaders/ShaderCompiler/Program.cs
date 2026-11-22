@@ -6,7 +6,11 @@ using System.Runtime.InteropServices;
 
 namespace PCL.Core.ShaderCompiler;
 
-// 把同目录的 .hlsl 编译成 WPF 能用的 .ps
+/// <summary>
+///     把同目录下的 .hlsl 编译成 WPF 可用的 .ps 像素着色器二进制。<br/>
+///     通过 P/Invoke 调用系统自带的 d3dcompiler_47.dll，因此无需安装 Windows SDK。<br/>
+///     用法：<c>dotnet run --project ShaderCompiler</c>（可加文件名参数只编译指定文件）
+/// </summary>
 internal static class Program
 {
     [DllImport("d3dcompiler_47.dll", CharSet = CharSet.Ansi)]
@@ -33,12 +37,15 @@ internal static class Program
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate uint ReleaseDelegate(IntPtr thisPtr);
 
-    // ID3DBlob 的 vtable 继承自 IUnknown 顺序是 QueryInterface AddRef Release GetBufferPointer GetBufferSize
+    // ID3DBlob 的 vtable 布局（继承自 IUnknown）：
+    //   0 QueryInterface, 1 AddRef, 2 Release, 3 GetBufferPointer, 4 GetBufferSize
     private const int VtblRelease = 2;
     private const int VtblGetBufferPointer = 3;
     private const int VtblGetBufferSize = 4;
 
-    // 从 COM 对象的 vtable 里取方法
+    /// <summary>
+    ///     从 COM 对象的 vtable 取出指定方法的委托。
+    /// </summary>
     private static T _GetComMethod<T>(IntPtr comObject, int index) where T : Delegate
     {
         var vtable = Marshal.ReadIntPtr(comObject);
@@ -46,7 +53,9 @@ internal static class Program
         return Marshal.GetDelegateForFunctionPointer<T>(entry);
     }
 
-    // 读 ID3DBlob 的内容
+    /// <summary>
+    ///     读取 ID3DBlob 的内容。
+    /// </summary>
     private static byte[] _ReadBlob(IntPtr blob)
     {
         var size = (int)_GetComMethod<GetBufferSizeDelegate>(blob, VtblGetBufferSize)(blob);
@@ -58,6 +67,9 @@ internal static class Program
         return buffer;
     }
 
+    /// <summary>
+    ///     释放 COM 对象。
+    /// </summary>
     private static void _ReleaseCom(IntPtr comObject)
     {
         if (comObject == IntPtr.Zero) return;
@@ -67,7 +79,7 @@ internal static class Program
         }
         catch
         {
-            // 释放失败就算了
+            // 释放失败不应影响主流程
         }
     }
 
@@ -76,7 +88,7 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        // 传 .ps 进来就是反汇编模式 输出可读指令 跟参考实现比对用
+        // 反汇编模式：传入已编译的 .ps 时输出可读指令，用于比对参考实现
         var psArg = Array.Find(args, a => a.EndsWith(".ps", StringComparison.OrdinalIgnoreCase));
         if (psArg is not null)
             return Disassembler.Run(File.Exists(psArg) ? psArg : Path.GetFullPath(psArg)) ? 0 : 1;
@@ -120,7 +132,9 @@ internal static class Program
         return failed == 0 ? 0 : 1;
     }
 
-    // 编译一个 .hlsl 输出同名的 .ps
+    /// <summary>
+    ///     编译单个 .hlsl，输出同名 .ps。
+    /// </summary>
     private static bool _CompileFile(string hlslPath)
     {
         var name = Path.GetFileName(hlslPath);
@@ -170,13 +184,16 @@ internal static class Program
         }
     }
 
-    // 找着色器目录 先看命令行参数 再从当前目录往上翻
+    /// <summary>
+    ///     定位着色器目录：优先命令行参数，其次从当前目录向上查找。
+    /// </summary>
     private static string? _ResolveShaderDirectory()
     {
+        // 显式传入的目录
         var explicitDir = Environment.GetCommandLineArgs().Skip(1).FirstOrDefault(Directory.Exists);
         if (explicitDir is not null) return Path.GetFullPath(explicitDir);
 
-        // 当前工作目录和程序集所在目录都拿来当起点往上找
+        // 从当前工作目录与程序集位置向上找
         var probes = new List<string> { Directory.GetCurrentDirectory() };
         var asmDir = AppContext.BaseDirectory;
         if (!string.IsNullOrEmpty(asmDir)) probes.Add(asmDir);

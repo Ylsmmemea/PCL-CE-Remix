@@ -47,9 +47,9 @@ public static partial class ModAnimation
                         (long)Math.Round(ModBase.MathClamp(TimeUtils.GetTimeTick() - aniLastTick, 0, 100000));
                     if (deltaTime < minFrameGap)
                     {
-                        // 限帧
-                        // 没有待执行的动画就不用按帧率轮询 睡久一点省开销
-                        // 有动画时保持 1ms 精细等待 免得掉帧
+                        // 限制 FPS。
+                        // 没有待执行动画时无需按帧率轮询，改为较长的休眠以降低空转开销；
+                        // 有动画时保持 1ms 精细等待，避免动画掉帧。
                         Thread.Sleep(_HasPendingWork() ? 1 : 8);
                         continue;
                     }
@@ -462,8 +462,10 @@ public static partial class ModAnimation
     /// </summary>
     public static bool aniRunning;
 
-    // 还有没有待执行的动画
-    // 动画组执行完会从字典里移掉 所以看字典空不空就行
+    /// <summary>
+    ///     判断是否还有待执行的动画。<br/>
+    ///     动画组在全部执行完毕后会被移除，因此仅需判断字典是否为空。
+    /// </summary>
     private static bool _HasPendingWork() => !aniGroups.IsEmpty;
 
     private static readonly object aniControlEnabledLock = new();

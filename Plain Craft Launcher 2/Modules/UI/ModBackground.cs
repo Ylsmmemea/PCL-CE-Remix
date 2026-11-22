@@ -6,28 +6,43 @@ using PCL.Core.IO.Net.Http;
 
 namespace PCL;
 
-// 背景图的获取与缓存
+/// <summary>
+///     背景内容的获取与缓存。
+/// </summary>
 public static class ModBackground
 {
-    // 必应每日一图接口
-    // idx 是日期偏移 0 为今天 1 为昨天 最多能往前翻约 7 天 n 是返回数量 最大 8
+    /// <summary>
+    ///     必应每日一图接口。<br/>
+    ///     <c>idx</c> 为日期偏移（0 为今天，1 为昨天，最多可回溯约 7 天），<c>n</c> 为返回数量（最大 8）。
+    /// </summary>
     private const string BingApiUrl =
         "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN";
 
     private const string BingImageHost = "https://cn.bing.com";
 
-    // 一次最多取这么多张 接口上限就是 8
+    /// <summary>
+    ///     单次从接口获取的图片数量上限。
+    /// </summary>
     private const int BingImageCount = 8;
 
-    // 放在共享本地数据目录而不是临时目录 这样跨天和跨启动器会话都能复用
+    /// <summary>
+    ///     必应壁纸的缓存目录。<br/>
+    ///     位于共享本地数据目录而非临时目录，以便跨天、跨启动器会话复用。
+    /// </summary>
     private static string BingCacheDirectory =>
         Path.Combine(Paths.SharedLocalData, "BingWallpaper");
 
+    /// <summary>
+    ///     必应每日一图接口的响应。
+    /// </summary>
     public class BingImageArchive
     {
         [JsonPropertyName("images")] public BingImageInfo[]? Images { get; set; }
     }
 
+    /// <summary>
+    ///     必应每日一图的图片信息。
+    /// </summary>
     public class BingImageInfo
     {
         [JsonPropertyName("startdate")] public string? StartDate { get; set; }
@@ -37,11 +52,15 @@ public static class ModBackground
         [JsonPropertyName("hsh")] public string? Hash { get; set; }
     }
 
-    // 下载串行化 好几处同时触发的话会互相覆盖或者误删文件
+    /// <summary>
+    ///     用于串行化壁纸下载，避免并发调用互相干扰。
+    /// </summary>
     private static readonly object DownloadLock = new();
 
-    // 读本地缓存 不发网络请求 UI 线程可以调
-    // 返回按文件修改时间由新到旧排好的路径 没有缓存就是空列表
+    /// <summary>
+    ///     读取本地已缓存的必应壁纸。不发起任何网络请求，可在 UI 线程调用。
+    /// </summary>
+    /// <returns>按文件修改时间由新到旧排序的图片路径列表，无缓存时为空列表。</returns>
     public static List<string> GetCachedBingWallpapers()
     {
         try
@@ -63,12 +82,15 @@ public static class ModBackground
         }
     }
 
-    // 拉最新的必应壁纸并缓存到本地 返回拿到手的路径
-    // 已经缓存过的不会重复下载 下完顺手清理不再需要的旧图
-    // 会发网络请求 别在 UI 线程调
-    // keepPath 是要保留的图 通常是当前正在用的那张 可以传 null
+    /// <summary>
+    ///     从接口获取最新的必应壁纸并缓存到本地，返回成功获取的图片路径。<br/>
+    ///     已缓存的图片不会重复下载；下载完成后会清理不再需要的旧图。<br/>
+    ///     该方法会发起网络请求，不应在 UI 线程调用。
+    /// </summary>
+    /// <param name="keepPath">需要保留的图片路径（通常是当前正在使用的那张），可为 <c>null</c>。</param>
     public static List<string> DownloadBingWallpapers(string? keepPath = null)
     {
+        // 串行化，避免多处同时触发下载时互相覆盖或误删文件
         lock (DownloadLock)
         {
             return _DownloadBingWallpapersCore(keepPath);
@@ -120,7 +142,7 @@ public static class ModBackground
                 }
                 catch (Exception ex)
                 {
-                    // 单张挂了不影响其他图
+                    // 单张失败不影响其余图片
                     ModBase.Log(ex, $"[UI] 下载必应壁纸失败：{image.Copyright}");
                 }
             }
@@ -136,7 +158,12 @@ public static class ModBackground
         return result;
     }
 
-    // 清理缓存 这次接口没返回的又不是当前正在用的 就删掉 免得目录一直涨
+    /// <summary>
+    ///     清理必应壁纸缓存：删除既不在本次接口返回列表中、也不是当前正在使用的图片。<br/>
+    ///     用于在更新缓存后移除过期壁纸，避免目录无限增长。
+    /// </summary>
+    /// <param name="keepPaths">本次接口返回并已缓存的图片路径。</param>
+    /// <param name="keepPath">当前正在使用的图片路径，可为 <c>null</c>。</param>
     private static void CleanupBingCache(IReadOnlyCollection<string> keepPaths, string? keepPath)
     {
         try

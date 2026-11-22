@@ -10,11 +10,13 @@ using PCL.Core.UI.Effects;
 
 namespace PCL.Core.Test;
 
-// 液态玻璃的离屏像素验证
-//
-// 先要解决离屏渲染到底能不能跑自定义着色器 RenderTargetBitmap 走的是软件光栅化
-// 之前测 AdaptiveBlur 差异是 0 但那可能是因为着色器在测试宿主里压根没加载 它也有条 catch 吞异常的加载路径
-// 要是在已经构造了 Application 的环境下能测出差异 这个文件里的像素断言才可信
+/// <summary>
+///     液态玻璃着色器的离屏像素验证。<br/>
+///     先解决「离屏渲染能否跑自定义着色器」这一前置问题：<see cref="RenderTargetBitmap"/>
+///     走软件光栅化，此前测得 <c>AdaptiveBlur</c> 0% 差异，但那可能是因为该着色器在测试宿主里
+///     根本没加载（它同样有 catch 吞异常的加载路径）。若在已构造 <see cref="Application"/>
+///     的环境下能测出差异，则本文档中的像素断言可信。
+/// </summary>
 [TestClass]
 public class LiquidGlassRenderTest
 {
@@ -56,7 +58,7 @@ public class LiquidGlassRenderTest
         return dispatcher.Invoke(func);
     }
 
-    // 高饱和棋盘 两种格子亮度接近但蓝通道差得远 位移和变暗都很容易检出来
+    /// <summary>高饱和棋盘：两种格子亮度接近但蓝通道差异极大，位移与变暗都极易检出。</summary>
     private static BitmapSource Checker()
     {
         const int cell = 10;
@@ -88,17 +90,6 @@ public class LiquidGlassRenderTest
         return outPx;
     }
 
-    private static LiquidGlassEffect Make(double refraction) => new()
-    {
-        BlurAmount = 6,
-        Refraction = refraction,
-        RefThickness = 50,
-        Glare = 0,
-        TextureSize = new Point(W, H),
-        Tint = Color.FromArgb(0, 255, 255, 255),
-        Opacity = 1
-    };
-
     private static byte[] RenderWith(Effect? effect)
     {
         var visual = new DrawingVisual();
@@ -119,9 +110,11 @@ public class LiquidGlassRenderTest
         return (double)n / (a.Length / 4);
     }
 
-    // 前置问题 离屏渲染到底能不能跑自定义着色器
+    /// <summary>
+    ///     前置问题：离屏渲染到底能不能跑自定义着色器？
+    /// </summary>
     [TestMethod]
-    public void OffscreenRenderingShouldRunCustomShaders()
+    public void 前置_离屏渲染能否跑自定义着色器()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
@@ -131,7 +124,19 @@ public class LiquidGlassRenderTest
 
             var blur = RenderWith(new BlurEffect { Radius = 30 });
             var adaptiveShader = RenderWith(new AdaptiveBlurEffect { Radius = 30, SamplingRate = 1.0 });
-            var liquidShader = RenderWith(Make(60));
+            var liquidShader = RenderWith(new LiquidGlassEffect
+            {
+                BlurAmount = 6,
+                Refraction = 60,
+                RefThickness = 50,
+                NoiseScale = 40,
+                NoiseStrength = 0,
+                FlowTime = 10,
+                Glare = 0,
+                TextureSize = new Point(W, H),
+                Tint = Color.FromArgb(0, 255, 255, 255),
+                Opacity = 1
+            });
 
             return (DiffRatio(raw, blur), DiffRatio(raw, adaptiveShader), DiffRatio(raw, liquidShader));
         });
@@ -141,14 +146,28 @@ public class LiquidGlassRenderTest
         Console.WriteLine($"LiquidGlass      vs 原图：{liquid:P1}");
     }
 
-    // 边缘不能出现黑边 输入全是亮的 luma 约 198 到 206
-    // 输出里任何明显偏暗的像素都只可能来自越界采样
+    /// <summary>
+    ///     边缘不得出现黑边。输入全为亮色（luma 约 198~206），
+    ///     输出任何明显偏暗的像素都只可能来自越界采样。
+    /// </summary>
     [TestMethod]
-    public void EdgesShouldNotProduceDarkBorders()
+    public void 边缘不应出现黑边()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
-        var px = OnSta(() => RenderWith(Make(60)));
+        var px = OnSta(() => RenderWith(new LiquidGlassEffect
+        {
+            BlurAmount = 6,
+            Refraction = 60,
+            RefThickness = 50,
+            NoiseScale = 40,
+            NoiseStrength = 0,
+            FlowTime = 10,
+            Glare = 0,
+            TextureSize = new Point(W, H),
+            Tint = Color.FromArgb(0, 255, 255, 255),
+            Opacity = 1
+        }));
 
         var stride = W * 4;
         for (var ring = 0; ring < 3; ring++)
@@ -170,13 +189,32 @@ public class LiquidGlassRenderTest
         }
     }
 
-    // 折射有没有真的改变边缘的背景内容 这是本次改动的核心验收点
+    /// <summary>
+    ///     折射是否真的改变了边缘的背景内容。这是本次改动的核心验收点。
+    /// </summary>
     [TestMethod]
-    public void EdgesShouldRefractWhileCenterStaysFlat()
+    public void 边缘应发生折射而中心保持平整()
     {
         Assert.IsNotNull(AppHost.Value, "无法在测试进程中启动 WPF Application");
 
-        var (flat, bent) = OnSta(() => (RenderWith(Make(0)), RenderWith(Make(60))));
+        var (flat, bent) = OnSta(() =>
+        {
+            LiquidGlassEffect Make(double refraction) => new()
+            {
+                BlurAmount = 6,
+                Refraction = refraction,
+                RefThickness = 50,
+                NoiseScale = 40,
+                NoiseStrength = 0,
+                FlowTime = 10,
+                Glare = 0,
+                TextureSize = new Point(W, H),
+                Tint = Color.FromArgb(0, 255, 255, 255),
+                Opacity = 1
+            };
+
+            return (RenderWith(Make(0)), RenderWith(Make(60)));
+        });
 
         var stride = W * 4;
         int edgeChanged = 0, edgeTotal = 0, centerChanged = 0, centerTotal = 0;
@@ -185,7 +223,7 @@ public class LiquidGlassRenderTest
         for (var x = 0; x < W; x++)
         {
             var o = y * stride + x * 4;
-            var changed = Math.Abs(flat[o] - bent[o]) > 12; // 蓝通道 80 和 255
+            var changed = Math.Abs(flat[o] - bent[o]) > 12; // 蓝通道 80 vs 255
             var edgeDist = Math.Min(Math.Min(x, W - 1 - x), Math.Min(y, H - 1 - y));
 
             if (edgeDist <= 40) { edgeTotal++; if (changed) edgeChanged++; }

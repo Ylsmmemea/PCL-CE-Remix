@@ -34,8 +34,8 @@ public sealed partial class ThemeService
 
     [RegisterConfigEvent]
     public static ConfigEventRegistry OnColorThemeConfigChanged => new(
-        // 把 TextToneConfig 也挂进来 它的效果同样落在 ApplyColorResources 里 整套配色算完之后才覆盖正文档位
-        // 走这条刷新路径就行 下面那两个非当前模式就忽略的判断拦不到它
+        // TextToneConfig 一并纳入：它的效果也是在 ApplyColorResources 里、整套配色算完之后
+        // 覆盖正文档位，走同一条刷新路径即可（下面两个「非当前模式则忽略」的判断不会拦它）。
         scope:
         [
             Config.Preference.Theme.DarkColorConfig, Config.Preference.Theme.LightColorConfig,
@@ -368,11 +368,19 @@ public sealed partial class ThemeService
         _ApplyTextToneOverride();
     }
 
-    // 按 UiTextTone 提亮正文颜色
-    // 正文用的是配色里最暗那一档 ColorBrush1 次级文字用 ColorBrush2
-    // 亮色主题下这两档接近黑色 碰上毛玻璃面板后面偏暗的壁纸对比度就很低
-    // 所以在整套配色算完之后把它们换成配色自带的浅档位
-    // 只覆盖这两档 按钮填充 边框 面板底色用的都是 3 以上的档位 不会把整个界面翻成深色
+    /// <summary>
+    ///     按 <c>UiTextTone</c> 提亮正文颜色。<br/>
+    ///     <para>
+    ///     正文（<see cref="System.Windows.Controls.TextBlock"/> 的默认样式）取的是配色里
+    ///     最暗的一档 <c>ColorBrush1</c>，次级文字取 <c>ColorBrush2</c>。亮色主题下这两档
+    ///     接近黑色，配上毛玻璃面板背后偏暗的壁纸时对比度很低。这里在整套配色算完之后
+    ///     把它们替换成配色自带的浅档位。
+    ///     </para>
+    ///     <para>
+    ///     只覆盖这两档：按钮填充、边框、面板底色用的是 3 以上的档位，不受影响，
+    ///     所以不会把整个界面翻成深色。
+    ///     </para>
+    /// </summary>
     private static void _ApplyTextToneOverride()
     {
         var level = PCL.Core.App.Config.Preference.Theme.TextTone;

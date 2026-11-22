@@ -32,11 +32,13 @@
                                             Tag="UiLauncherTransparent" MaxValue="600" ValueByKey="10" Grid.Column="1"
                                             Change="SliderChange" />
                         </Grid>
-                        <!-- 这里原本有六列 是从一行放两对标签控件的模板抄来的 后四列没内容却一直占着宽度
-                             窗口一窄下拉框就被挤没了 只留标签和控件两列 -->
                         <Grid Height="28" Margin="0,0,0,7">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="Name1" />
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="92" SharedSizeGroup="SubName" />
+                                <ColumnDefinition />
+                                <ColumnDefinition SharedSizeGroup="SubName" />
                                 <ColumnDefinition />
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Text="{DynamicResource Setup.Ui.Theme.Title}" />
@@ -47,12 +49,14 @@
                                 <local:MyComboBoxItem Content="{DynamicResource Setup.Ui.Theme.FollowSystem}" /> <!-- default -->
                             </local:MyComboBox>
                         </Grid>
-                        <!-- 正文颜色 亮色主题下正文默认接近纯黑 配上偏暗的壁纸对比度很低
-                             Height 和 Margin 必须跟上面主题那行一致 MyComboBox 不会自己撑高
-                             不给显式行高就只按内容排 下拉框会又扁又小 -->
+                        <!-- 正文颜色：亮色主题下正文默认接近纯黑，配上偏暗的壁纸对比度很低。
+                             Height/Margin 必须与上面「主题」那行保持一致：MyComboBox 不会自己撑高，
+                             没有显式行高时只按内容排版，下拉框会显得又扁又小。 -->
                         <Grid Height="28" Margin="0,0,0,7">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="92" SharedSizeGroup="SubName" />
+                                <ColumnDefinition />
+                                <ColumnDefinition SharedSizeGroup="SubName" />
                                 <ColumnDefinition />
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
@@ -64,7 +68,7 @@
                                 <local:MyComboBoxItem Content="{DynamicResource Setup.Ui.Theme.TextTone.White}" />
                             </local:MyComboBox>
                         </Grid>
-                        <!-- 配色选择 色块网格 点一下就切当前明暗模式的配色 -->
+                        <!-- 配色选择：色块网格，点击即切换当前明暗模式下的配色 -->
                         <StackPanel x:Name="PanThemePicker" Margin="0,12,0,0">
                             <TextBlock x:Name="LabThemePickerCaption" Margin="0,0,0,8" Opacity="0.8"
                                        Text="{DynamicResource Setup.Ui.Theme.PickColor}" />

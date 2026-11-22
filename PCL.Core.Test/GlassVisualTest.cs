@@ -14,21 +14,27 @@ using Color = System.Windows.Media.Color;
 
 namespace PCL.Core.Test;
 
-// 液态玻璃的视觉检查工具
-//
-// 必须用真窗口 RenderTargetBitmap 走软件光栅化 会整体跳过自定义 ShaderEffect
-// 仓库里原有的 AdaptiveBlur 同样测得 0% 差异 所以离屏断言反映不了真实渲染
-//
-// 必须用真实图像 棋盘和同心环这类合成图案只能验证位移量 方向对称性这些可量化的东西
-// 判断不了像不像玻璃 而观感恰恰是这里的主要验收标准
-// 所以默认输入换成参考实现自带的照片 输出直接落盘供目视比对
-//
-// 稳定性 GDI 抓屏可能拿到还没合成完的帧 同一条测试先测出 -58 重跑三次都是 +34 这种情况出现过
-// 所有采样都走连抓两帧一致才接受
+/// <summary>
+///     液态玻璃的视觉检查工具。<br/>
+///     <para>
+///     <b>为什么必须用真窗口：</b><see cref="RenderTargetBitmap"/> 走软件光栅化，会整体跳过
+///     自定义 <c>ShaderEffect</c>（仓库里已有的 <c>AdaptiveBlur</c> 同样测得 0% 差异），
+///     任何离屏断言都不反映真实渲染。
+///     </para>
+///     <para>
+///     <b>为什么必须用真实图像：</b>合成图案（棋盘、同心环）只能验证位移量、方向对称性这类
+///     可量化指标，判断不了「像不像玻璃」。而观感恰恰是本项目的主要验收标准，
+///     因此默认输入改用参考实现自带的照片，输出直接落盘供目视比对。
+///     </para>
+///     <para>
+///     <b>稳定性：</b>GDI 抓屏可能拿到尚未合成完成的帧（曾出现同一条测试先测出 -58、
+///     重跑三次都是 +34 的情况）。所有采样都经过「连抓两帧一致才接受」的校验。
+///     </para>
+/// </summary>
 [TestClass]
 public class GlassVisualTest
 {
-    // 参考实现自带的测试照片 方便跟 example.png 直接对照
+    /// <summary>参考实现自带的测试照片，便于与 example.png 直接对照。</summary>
     private static readonly string[] PhotoCandidates =
     [
         @"D:\Code\_lg_refs\LiqiudGlassHLSL\imgui-example\examples\example_win32_directx11\pic.jpg",
@@ -66,15 +72,17 @@ public class GlassVisualTest
         return null;
     }
 
-    // 高饱和棋盘 量化测量用的
-    // 照片上大片纯色 位移发生在纯色区里一个像素都不会变 会把真实的折射量测成 0 据此误判过上边缘没有折射
-    // 棋盘的高频边缘让任何位移都立刻变成像素差
+    /// <summary>
+    ///     高饱和棋盘。用于**量化**测量 —— 照片上有大片纯色区，位移发生在纯色区内
+    ///     不会改变任何一个像素，会把真实的折射量测成 0（曾据此误判「上边缘没有折射」）。
+    ///     棋盘的高频边缘让任何位移都立刻表现为像素差。
+    /// </summary>
     private static BitmapSource Checker(int w, int h, int cell = 12)
     {
-        // 格子数必须取偶数 图案才左右上下镜像对称
-        // 直接用 x/cell 分格的话格数通常不是整数 左右两端相位不同
-        // 同一条折射在左右测得的值能差出百分之几十 看着像折射不对称 其实是图案自己的偏差
-        // 判别办法 正方形图案上左等于上 右等于下 成对相等就是图案伪影
+        // 格子数必须取偶数，图案才是左右/上下镜像对称的。
+        // 若用 x/cell 直接分格，格数通常不是整数，左右两端的相位就不同 ——
+        // 同一条折射在左右测得的值会差出百分之几十，看起来像「折射不对称」，
+        // 实际是图案自身的偏差（判别方法：正方形图案上「左=上、右=下」成对相等即为图案伪影）。
         var nx = Math.Max(2, w / cell);
         if (nx % 2 != 0) nx++;
         var ny = Math.Max(2, h / cell);
@@ -142,16 +150,21 @@ public class GlassVisualTest
 
     #region 效果参数
 
-    // 参数跟真实应用保持一致
-    // refraction 对应 UiGlassLiquidRefraction 滑块 0 到 150
-    // thickness 对应 UiGlassLiquidRefThickness 0 到 100
-    // blur 对应毛玻璃强度滑块 0 到 40 直接当 BlurAmount 用
+    /// <summary>
+    ///     与真实应用一致的效果参数。<br/>
+    ///     <paramref name="refraction"/> 对应 UiGlassLiquidRefraction 滑块（0~150），
+    ///     <paramref name="thickness"/> 对应 UiGlassLiquidRefThickness（0~100），
+    ///     <paramref name="blur"/> 对应毛玻璃强度滑块（0~40，实际传入 BlurAmount）。
+    /// </summary>
     private static LiquidGlassEffect MakeEffect(int w, int h, int refraction, int thickness,
         double glare, double blur, double cornerRadius = 12) => new()
     {
         BlurAmount = blur,
         Refraction = refraction,
         RefThickness = thickness,
+        NoiseScale = 40,
+        NoiseStrength = 0,
+        FlowTime = 0,
         Glare = glare,
         TextureSize = new System.Windows.Point(w, h),
         CornerRadius = cornerRadius,
@@ -226,8 +239,10 @@ public class GlassVisualTest
         return (double)n / (a.Length / 4);
     }
 
-    // 抓一帧 顺便确认画面稳了 连着两次抓出来一样才收
-    // 直接 Sleep 完就抓会拿到还没合成完的帧 之前测量符号反转就是这么来的
+    /// <summary>
+    ///     抓取一帧，并校验画面已稳定：连续两次抓取一致才接受。<br/>
+    ///     直接 Sleep 后抓屏会拿到未合成完成的帧，这是此前测量出现符号反转的原因。
+    /// </summary>
     private static byte[] GrabStable(Shot shot)
     {
         byte[]? prev = null;
@@ -260,10 +275,11 @@ public class GlassVisualTest
         bmp.Save(Path.Combine(dir, name + ".png"), ImageFormat.Png);
     }
 
-    // 在同一块背景上渲染一次玻璃再把图抓回来 applyEffect 为 false 就是原图
-    // 效果实例必须在渲染线程里构造 Freezable 有 Dispatcher 亲和性
-    // 在测试线程建好再赋给 UI 元素会抛 从错误上下文使用参数访问此 API
-    // </summary>
+    /// <summary>
+    ///     在同一块背景上渲染一次玻璃并抓图。<paramref name="applyEffect"/> 为 false 时输出原图。<br/>
+    ///     效果实例必须在渲染线程内构造：<see cref="Freezable"/> 有 Dispatcher 亲和性，
+    ///     在测试线程创建后再赋给 UI 元素会抛「从错误上下文使用参数访问此 API」。
+    /// </summary>
     private static byte[] Render(int w, int h, int refraction, int thickness, double glare,
         double blur, string? dump = null, bool applyEffect = true, BitmapSource? source = null)
     {
@@ -297,7 +313,7 @@ public class GlassVisualTest
 
     #endregion
 
-    // 平均亮度 用来看高光在给定背景上还有没有可见空间
+    /// <summary>平均亮度，用于判断高光在给定背景上是否还有可见空间。</summary>
     private static double Luma(byte[] px, int w, int h, int x0, int y0, int x1, int y1)
     {
         double s = 0;
@@ -312,13 +328,15 @@ public class GlassVisualTest
         return n == 0 ? 0 : s / n;
     }
 
-    // 导出一组能直接拿眼睛比的图 原图 折射 高光 完整
-    // 判断像不像液态玻璃主要靠这个 数值指标测不出观感
+    /// <summary>
+    ///     导出一组可直接目视比对的图：原图 / 折射 / 高光 / 完整。<br/>
+    ///     这是判断「像不像液态玻璃」的主要手段 —— 数值指标测不出观感。
+    /// </summary>
     [TestMethod]
-    public void ExportVisualComparisonImages()
+    public void 导出目视对比图()
     {
         const int w = 640, h = 420;
-        // 用户当前的配置 折射 60 厚度 50 高光 50 毛玻璃强度约 22
+        // 用户当前配置：折射 60、厚度 50、高光 50、毛玻璃强度约 22
         const int refraction = 60, thickness = 50;
         const double glare = 0.5, blur = 1;
 
@@ -333,9 +351,9 @@ public class GlassVisualTest
         Console.WriteLine($"D vs A 差异 = {Diff(flat, full):P1}  （合计）");
         Console.WriteLine($"E vs D 差异 = {Diff(full, strong):P1}  （滑块满量程的增量）");
 
-        // 细节还剩多少 看中心区域相邻像素的梯度均值 拿它当锐度代理
-        // 中心折射是 0 所以这里的下降只可能来自模糊 糊到什么程度就看这个
-        // 仅高光那组折射也是 0 它中心锐度的下降全归模糊
+        // 细节保留度：中心区域的相邻像素梯度均值（锐度代理）。
+        // 中心的折射为 0，因此这里的下降只可能来自模糊 —— 是判断「糊到什么程度」的客观依据。
+        // 仅高光这一组折射为 0，其中心锐度的下降完全归因于模糊
         Console.WriteLine($"中心锐度  原图 {Sharpness(flat, w, h):F2}  " +
                           $"纯模糊 {Sharpness(lightOnly, w, h):F2}  " +
                           $"完整 {Sharpness(full, w, h):F2}");
@@ -343,7 +361,7 @@ public class GlassVisualTest
         Assert.IsTrue(true);
     }
 
-    // 中心区域相邻像素的梯度均值 当锐度代理用 跟原图比就知道细节被抹掉多少
+    /// <summary>中心区域的相邻像素梯度均值，作为锐度代理。与原图比较即可看出细节被抹掉多少。</summary>
     private static double Sharpness(byte[] px, int w, int h)
     {
         double s = 0;
@@ -361,11 +379,13 @@ public class GlassVisualTest
         return n == 0 ? 0 : s / n;
     }
 
-    // 高光可见性和背景亮度的关系
-    // 加法高光在亮背景上会被 saturate 吃掉 背景都快纯白了再亮也亮不上去 边缘高光直接看不见
-    // 苍白壁纸上看不到光泽就是这个原因
+    /// <summary>
+    ///     高光可见性 vs 背景亮度。<br/>
+    ///     加法高光在亮背景上会被 <c>saturate</c> 吃掉 —— 背景已经接近纯白时，
+    ///     再亮也亮不上去，边缘高光会完全不可见。这解释了「苍白壁纸上看不到光泽」。
+    /// </summary>
     [TestMethod]
-    public void GlareVisibilityAcrossBackgroundBrightness()
+    public void 高光在不同亮度背景上的可见性()
     {
         const int w = 400, h = 300;
 
@@ -424,9 +444,9 @@ public class GlassVisualTest
         return bmp;
     }
 
-    // 分区域统计折射带来的像素变化 看四条边对不对称 中心有没有被影响
+    /// <summary>分区统计折射造成的像素变化，确认四边对称且中心不受影响。</summary>
     [TestMethod]
-    public void MeasureRefractionByRegion()
+    public void 分区测量折射强度()
     {
         const int w = 700, h = 500;
         const int thickness = 50;
@@ -470,12 +490,14 @@ public class GlassVisualTest
         Console.WriteLine($"中心区 {Band(100, 100, w - 100, h - 100):F2}  （应接近 0）");
     }
 
-    // 四边对称性和尺寸适配 在棋盘上分别统计四条边和中心
-    // 用棋盘不用照片的原因见 Checker
-    // 尺寸取真实 UI 的典型值 用户反馈过只有部分卡片有折射 侧边菜单没有 而这俩正好是极端长宽比的面板
-    // 模糊置 0 测到的差异全来自折射
+    /// <summary>
+    ///     四边对称性与尺寸适配：在棋盘上分别统计四条边与中心。<br/>
+    ///     用棋盘而非照片的原因见 <see cref="Checker"/>。<br/>
+    ///     尺寸取真实 UI 的典型值 —— 用户反馈过「只有部分卡片有」「侧边菜单没有」，
+    ///     而这两者恰恰是极端长宽比的面板。模糊置 0，测到的差异全部来自折射。
+    /// </summary>
     [TestMethod]
-    public void EdgeSymmetryAndSizeAdaptation()
+    public void 四边对称性与尺寸适配()
     {
         const int thickness = 50;
 
@@ -490,9 +512,10 @@ public class GlassVisualTest
 
         foreach (var (name, w, h) in cases)
         {
-            // 格子按面板短边取比例 固定像素格子的话这个指标会饱和 位移超过一个格子以后差异就不涨了
-            // 于是 900x48 位移 3.7px 测得 11 而 400x400 位移 30px 测得 78
-            // 看着像细长面板效果弱 其实是格子相对位移的比例不一样 按比例取格子各尺寸才能直接比
+            // 格子按面板短边取比例。用固定像素格子时该指标会饱和：位移超过一个格子后
+            // 差异不再随位移增长，于是 900x48（位移 3.7px）测得 11，
+            // 而 400x400（位移 30px）测得 78 —— 看起来像「细长面板效果弱」，
+            // 实际只是格子相对位移的比例不同。按比例取格子后各尺寸可直接比较。
             var cell = Math.Max(2, Math.Min(w, h) / 16);
             var checker = Checker(w, h, cell);
             var flat = Render(w, h, 0, thickness, 0, 0, null, true, checker);

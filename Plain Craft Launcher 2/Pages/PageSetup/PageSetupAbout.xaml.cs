@@ -37,9 +37,6 @@ public partial class PageSetupAbout
             .Replace("%VERSIONCODE%", ModBase.versionCode.ToString()).Replace("%BRANCH%", ModBase.versionBranchName)
             .Replace("%COMMIT_HASH%", ModBase.commitHashShort);
 
-        // 二创版版本号从 ModRemix.Version 来 改版本不用动语言文件
-        ItemRemix.Info = ItemRemix.Info.Replace("%VERSION%", ModRemix.Version);
-
         if (!Lang.IsChineseMainland)
         {
             ItemMcmod.Visibility = Visibility.Collapsed;

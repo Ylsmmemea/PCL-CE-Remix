@@ -134,8 +134,11 @@ public struct NColor :
     {
     }
 
-    // 按十六进制解析 不会拿它去查资源键
-    // 支持 #RGB #RGBA #RRGGBB #RRGGBBAA 四种写法
+    /// <summary>
+    ///     从十六进制字符串解析颜色，<b>不会</b>尝试将其作为资源键查找。<br/>
+    ///     支持 <c>#RGB</c>、<c>#RGBA</c>、<c>#RRGGBB</c>、<c>#RRGGBBAA</c>。
+    /// </summary>
+    /// <exception cref="ArgumentException">字符串为空、缺少 <c>#</c> 前缀或长度不合法。</exception>
     public static NColor FromHex(string str)
     {
         if (string.IsNullOrWhiteSpace(str))

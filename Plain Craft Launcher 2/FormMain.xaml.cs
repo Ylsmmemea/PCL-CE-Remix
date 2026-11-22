@@ -660,7 +660,7 @@ public partial class FormMain
 
             PanForm.Width = formWidth;
             PanForm.Height = formHeight;
-            // PanMain 的宽度交给 Grid 第一列算 这样 AI 面板展开时内容会被挤窄而不是被盖住
+            PanMain.Width = formWidth;
 
             if (PanTitle is not null)
                 PanMain.Height = Math.Max(0d, formHeight - PanTitle.ActualHeight);
@@ -1400,11 +1400,6 @@ public partial class FormMain
         Tools = 3,
 
         /// <summary>
-        ///     服务器。
-        /// </summary>
-        Server = 4,
-
-        /// <summary>
         ///     设置。
         /// </summary>
         Setup = 2,
@@ -1477,7 +1472,6 @@ public partial class FormMain
         SetupJava = 9,
         SetupLauncherMisc = 10,
         SetupLauncherLanguage = 11,
-        SetupAI = 12,
 
         ToolsGameLink = 1,
         ToolsTest = 3,
@@ -1878,16 +1872,6 @@ public partial class FormMain
                         ModMain.frmToolsLeft ??= new PageToolsLeft();
                         subType = ModMain.frmToolsLeft.pageID;
                         PageChangeAnim(ModMain.frmToolsLeft, (FrameworkElement)ModMain.frmToolsLeft.PageGet(subType));
-                        break;
-                    }
-                case PageType.Server: // 服务器
-                    {
-                        ModMain.frmServerLeft ??= new PageServerLeft();
-                        ModMain.frmServerRight ??= new PageServerRight();
-                        // 每次进来都从卡片墙开始 左栏这时候是收起的
-                        ModMain.frmServerLeft.ShowList();
-                        ModMain.frmServerRight.ExitToList();
-                        PageChangeAnim(ModMain.frmServerLeft, ModMain.frmServerRight);
                         break;
                     }
                 case PageType.Setup: // 设置

@@ -284,7 +284,7 @@ public class ModSetup
     public static void UiBackgroundOpacity(int value)
     {
         ModMain.frmMain.ImgBack.Opacity = value / 1000d;
-        // 壁纸外观变了毛玻璃采到的东西就变了 但玻璃层的几何没动 得显式失效一下
+        // 壁纸外观变化会影响毛玻璃采样结果，但不会改变玻璃层几何，需显式失效
         BlurBorder.InvalidateAllBackgrounds();
     }
 
@@ -496,19 +496,23 @@ public class ModSetup
     }
 
     // 毛玻璃
-    // 毛玻璃当前开着没有 用来分辨是开关变了还是只有强度变了
+    /// <summary>
+    ///     毛玻璃当前是否处于开启状态，用于区分「开关变化」与「强度变化」。
+    /// </summary>
     private static bool _glassEnabled;
 
-    // 应用毛玻璃强度 0 就是关
-    // 作用在顶部导航栏和左侧菜单上 卡片参不参与由卡片毛玻璃单独控制
-    // 模糊层要抓取并重绘父级视觉树 开销不小 别给一大堆元素同时开
+    /// <summary>
+    ///     应用毛玻璃强度。0 表示关闭。<br/>
+    ///     作用于顶部导航栏与左侧菜单；卡片是否参与由「卡片毛玻璃」单独控制。<br/>
+    ///     注意：模糊层需要抓取并重绘父级视觉树，开销较大，因此不应对大量元素同时启用。
+    /// </summary>
     public static void UiGlass(int value)
     {
         var enabled = value > 0;
         var radius = value * 1.0d;
         var res = System.Windows.Application.Current.Resources;
 
-        // 只动数值和透明度 别碰画刷资源 一碰一大堆元素要重新求值
+        // 强度变化：只更新数值与透明度，不触碰会引发大量元素重新求值的画刷资源
         res["GlassRadius"] = radius;
         UiGlassTitleBarTransparency();
         UiGlassCard(Config.Preference.Glass.CardEnabled);
@@ -519,10 +523,10 @@ public class ModSetup
         if (enabled == _glassEnabled)
             return;
 
-        // 开关变了才去动那些跟画刷有关的资源 就地改 Color 不换实例
-        // 换实例的话 DynamicResource 那边全要重新绑定
+        // 开关变化：切换依赖画刷的资源。就地改 Color 而非替换实例，
+        // 避免 DynamicResource 引用方全部重新绑定。
         _glassEnabled = enabled;
-        // ColorBrushMsgBoxGlass 是主题系统按半透明算出来的 关掉毛玻璃时 GlassBorder 自己会退到 FallbackBackground
+        // ColorBrushMsgBoxGlass 由主题系统按半透明生成，关闭毛玻璃时 GlassBorder 会自动回退到 FallbackBackground。
         _SetSurface(enabled ? Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF) : ((SolidColorBrush)res["ColorBrushWhite"]).Color);
         _SetCardBackground(enabled);
         _SetBrushColor("ColorBrushSidebarBackground",
@@ -532,19 +536,25 @@ public class ModSetup
             ModMain.frmMain.ImgBackRefreshRowSpan();
     }
 
-    // 应用液态玻璃开关和参数
-    // 切开关要所有玻璃层重建 Effect 液态和普通模糊是两种不同的 Effect
-    // 只调参数的话触发一次重绘就行
+    /// <summary>
+    ///     应用液态玻璃开关与参数。<br/>
+    ///     切换开关时需要让所有玻璃层重建 Effect（液态与普通模糊是两种不同的 Effect），
+    ///     参数变化则只需触发重绘。
+    /// </summary>
+    /// <param name="rebuild">是否重建 Effect。开关变化时为 <c>true</c>，仅调参数时为 <c>false</c>。</param>
     public static void UiGlassLiquid(bool enabled)
     {
         if (ModMain.frmSetupUI is not null)
             ModMain.frmSetupUI.PanGlassLiquid.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
 
-        // 开关和参数变了都得让各玻璃层重新读配置重建 Effect
+        // 开关与参数变化都需要让各玻璃层重新读取配置并重建 Effect
         BlurBorder.InvalidateAllBackgrounds(true);
     }
 
-    // 就地把目标画刷的颜色改成另一个画刷资源的颜色 颜色没变就不写 免得引用方白白重绘
+    /// <summary>
+    ///     就地把目标画刷的颜色设为另一个画刷资源的颜色。颜色未变化时不写入，
+    ///     以避免触发引用方无谓的重绘。
+    /// </summary>
     private static void _SetBrushColor(string targetKey, string sourceKey)
     {
         var res = System.Windows.Application.Current.Resources;
@@ -561,7 +571,9 @@ public class ModSetup
         res[targetKey] = new SolidColorBrush(source.Color);
     }
 
-    // 就地把浮层表面色改掉 颜色没变就不写 免得引用方白白重绘
+    /// <summary>
+    ///     就地对浮层表面色赋值。颜色未变化时不写入，避免引用方无谓重绘。
+    /// </summary>
     private static void _SetSurface(Color color)
     {
         var res = System.Windows.Application.Current.Resources;
@@ -575,7 +587,9 @@ public class ModSetup
         res["ColorBrushSurface"] = new SolidColorBrush(color);
     }
 
-    // 切卡片背景色 开毛玻璃就用玻璃填充色 颜色没变就不写
+    /// <summary>
+    ///     切换卡片背景色。开启毛玻璃时使用玻璃填充色。颜色未变化时不写入。
+    /// </summary>
     private static void _SetCardBackground(bool enabled)
     {
         var res = System.Windows.Application.Current.Resources;
@@ -589,17 +603,22 @@ public class ModSetup
 
         res["ColorBrushCardBackground"] = new SolidColorBrush(color);
     }
-    // 应用卡片毛玻璃开关和强度
-    // 卡片多 每张都要单独抓背景 所以给个独立开关控制开销
+    /// <summary>
+    ///     应用卡片毛玻璃开关与强度。<br/>
+    ///     卡片数量较多且每张都需要单独抓取背景，故提供独立开关以控制性能开销。
+    /// </summary>
     public static void UiGlassCard(bool value)
     {
         var radius = value ? Config.Preference.Glass.Radius * 1.0d : 0d;
         System.Windows.Application.Current.Resources["GlassCardRadius"] = radius;
     }
 
-    // 按毛玻璃强度刷新导航栏背景色 强度越高填充越淡 模糊和壁纸就越明显 关掉就保持原来的不透明主题色
-    // 透明度走颜色自己的 alpha 不能用 SolidColorBrush.Opacity
-    // 因为 AnimatedBackgroundGrid 的颜色过渡动画会拿新画刷把这个属性盖掉
+    /// <summary>
+    ///     按毛玻璃强度刷新导航栏背景色。<br/>
+    ///     强度越高填充越淡，使模糊与背后的壁纸越明显；关闭时保持原本的不透明主题色。<br/>
+    ///     透明度通过颜色自身的 alpha 通道表达而非 <see cref="SolidColorBrush.Opacity"/>，
+    ///     因为 <c>AnimatedBackgroundGrid</c> 的颜色过渡动画会用新画刷覆盖该属性。
+    /// </summary>
     public static void UiGlassTitleBarTransparency()
     {
         var radius = Config.Preference.Glass.Radius;
@@ -618,19 +637,26 @@ public class ModSetup
         res["ColorBrushTitleBar"] = new SolidColorBrush(color);
     }
 
-    // 把毛玻璃强度换算成导航栏填充的 alpha 强度越高越透明 模糊和壁纸就越明显
-    //
-    // 这条填充色本身就是采集结果的一部分 GlassTitleBar 是 PanTitle 的子元素
-    // 父级自己的背景会被 BackgroundPresenter 画进采集内容
-    // 也就是说它在着色器之前就已经是一层不透明的平色了 折射只能作用在剩下的部分上
-    // 原来的曲线强度 16 时给 38% 壁纸只剩六成可见 再过一遍着色器的罩色 导航栏的折射基本被压平
-    // 这里整体下调 强度 16 时约 23%
+    /// <summary>
+    ///     将毛玻璃强度映射为导航栏填充的 alpha 值。<br/>
+    ///     强度越高越透明，使模糊与背后的壁纸越明显。
+    ///     <para>
+    ///     这条填充色属于玻璃**采集结果的一部分**：<c>GlassTitleBar</c> 是 <c>PanTitle</c> 的子元素，
+    ///     而父级自身的背景会被 <c>BackgroundPresenter</c> 画进采集内容。也就是说它在着色器之前
+    ///     就已经是一层不透明的平色，折射只能作用于剩下的部分。原曲线在强度 16 时给出 38%，
+    ///     壁纸只剩六成可见，加上着色器之后还有一层罩色，导航栏的折射基本被压平。
+    ///     这里整体下调，强度 16 时约 23%。
+    ///     </para>
+    /// </summary>
     private static byte _TitleBarAlpha(int radius)
         => (byte)Math.Round(255 * (0.34d - 0.28d * Math.Clamp(radius / 40d, 0d, 1d)));
 
     // 背景来源
-    // 应用背景来源设置 value 0 文件夹轮播 1 必应每日一图 2 指定图片文件
-    // reload 是问要不要立刻重新加载背景 启动初始化时外面会统一加载 那时候传 false 免得重复请求
+    /// <summary>
+    ///     应用背景来源设置。
+    /// </summary>
+    /// <param name="value">来源类型（0 文件夹轮播，1 必应每日一图，2 指定图片文件）。</param>
+    /// <param name="reload">是否立即重新加载背景内容。启动初始化时由外部统一加载，应传 <c>false</c> 以避免重复请求。</param>
     public static void UiBackgroundSource(int value, bool reload = true)
     {
         if (ModMain.frmSetupUI is not null)

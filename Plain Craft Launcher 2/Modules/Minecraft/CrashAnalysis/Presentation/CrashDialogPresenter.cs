@@ -50,8 +50,7 @@ internal sealed class CrashDialogPresenter(CrashAnalysisContext context)
             true,
             new MsgBoxButtonInfo(Lang.Text("Common.Action.Confirm"), 1),
             new MsgBoxButtonInfo(secondButtonText, 2, secondButtonAction),
-            new MsgBoxButtonInfo(thirdButtonText, 3),
-            new MsgBoxButtonInfo(Lang.Text("Crash.Dialog.Button.AiAnalyze"), 4));
+            new MsgBoxButtonInfo(thirdButtonText, 3));
 
         switch (selectedButton)
         {
@@ -65,38 +64,6 @@ internal sealed class CrashDialogPresenter(CrashAnalysisContext context)
             case 3:
                 _ExportReport(extraFiles);
                 break;
-
-            case 4:
-                _StartAiAnalysis(extraFiles);
-                break;
-        }
-    }
-
-    // 把崩溃现场交给 AI 弹窗只负责开面板 失败了也不影响继续用启动器
-    private void _StartAiAnalysis(List<string>? extraFiles)
-    {
-        if (string.IsNullOrWhiteSpace(Config.Ai.ApiUrl) ||
-            string.IsNullOrWhiteSpace(Config.Ai.ApiKey) ||
-            string.IsNullOrWhiteSpace(Config.Ai.Model))
-        {
-            HintWrapper.Show(Lang.Text("Setup.AiPanel.NoConfig"), HintTheme.Warning);
-            return;
-        }
-
-        try
-        {
-            var attachments = CrashAiContext.Build(context, extraFiles)
-                .Select(payload => new AiAttachment(payload.FileName, payload.Content))
-                .ToList();
-            // Output 是后台线程调进来的 弹窗关掉后仍在这个线程上 碰控件前得切回 UI
-            // 用 Wait 版本而不是 RunInUi 否则 Start 里抛的异常落到 Dispatcher 上 下面就 catch 不到了
-            ModBase.RunInUiWait(() => ModMain.frmMain.PanAiChat.Start(
-                Lang.Text("Setup.AiPanel.Title"), attachments, Lang.Text("Setup.AiPanel.Prompt")));
-        }
-        catch (Exception ex)
-        {
-            LogWrapper.Error(ex, "Crash", "启动 AI 崩溃分析失败");
-            HintWrapper.Show(Lang.Text("Setup.AiPanel.StartFailed"), HintTheme.Error);
         }
     }
 

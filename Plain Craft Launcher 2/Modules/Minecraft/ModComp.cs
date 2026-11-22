@@ -903,19 +903,28 @@ public static class ModComp
         /// </summary>
         public readonly DateTime? LastUpdate;
 
-        // 另一来源的同款工程
-        // 搜索时判定两个来源指的是同一个模组 就把被合并掉的那条挂这里 列表项会在下面把它列出来
-        // 不参与序列化 ToJson 和 _BuildFromCompJson 都是手写逐字段的 所以缓存格式没变 老缓存照样能用
-        // 只在一次搜索的生命周期里有效
+        /// <summary>
+        ///     另一来源的同款工程。<br/>
+        ///     搜索时若判定两个来源指向同一模组，把被合并掉的那条挂在这里，
+        ///     由列表项在其下方列出各来源的更新时间；点击可进入对应来源的详情页。<br/>
+        ///     <b>不参与序列化</b> —— <see cref="ToJson"/> 与 <c>_BuildFromCompJson</c> 都是逐字段
+        ///     手写的，因此缓存文件格式不变，旧缓存依然可用。仅在一次搜索的生命周期内有效。
+        /// </summary>
         public CompProject? MergedSource;
 
+        /// <summary>
+        ///     是否存在被合并的另一个来源。
+        /// </summary>
         public bool IsMerged => MergedSource is not null;
 
-        // 判断另一个来源的工程是不是同一个模组 列表去重用
-        // 先走 IsLike 的启发式 名称 译名 描述 slug 相似 不行再退回本地翻译库
-        // 翻译库里一条记录同时存着同一模组在两个平台的 slug 是权威映射
-        // 光靠启发式会漏很多 它额外要求两边更新时间差在 7 天以内 可两个平台的更新节奏本来就不一样
-        // 漏判的表现就是同一个模组在列表里出现两次
+        /// <summary>
+        ///     判断另一来源的工程是否为同一模组，用于列表去重。<br/>
+        ///     先用 <see cref="IsLike"/> 的启发式（名称/译名/描述/slug 相似），
+        ///     再退回本地翻译库 —— 它的每条记录同时存着同一模组在两个平台的 slug，
+        ///     是权威映射。<br/>
+        ///     只用启发式会大量漏判（它额外要求两边更新时间相差 7 天以内，
+        ///     而两个平台的更新节奏本来就不同），表现为同一模组在列表里出现两次。
+        /// </summary>
         public bool IsSameMod(CompProject other)
         {
             if (other is null || FromCurseForge == other.FromCurseForge) return false;
@@ -1709,9 +1718,9 @@ public static class ModComp
                     // 下载量数值缩写
                     newItem.LabDownload.Text = Lang.CompactNumber(DownloadCount);
 
-                    // 合并过就在条目下面把两个平台各自的更新时间列出来
-                    // 两边版本进度经常对不上 用户得看着这个决定从哪边下
-                    // 两行都能点 各进各的详情页
+                    // 合并了另一来源时，在条目下方列出两个平台各自的更新时间。
+                    // 两个平台的版本进度常不一致，用户需要据此决定从哪边下载；
+                    // 两行都可点击，各自进入对应来源的详情页。
                     if (MergedSource is { } merged)
                         newItem.SetMergedSources(
                             _SourceLineText(this),
@@ -1724,9 +1733,11 @@ public static class ModComp
                 { Height = IsMerged ? MyCompItem.MergedHeight : 64 };
         }
 
-        // 拼出 来源加更新于某时 这么一行 给合并条目的来源子行用
-        // 搜索接口只给最后更新时间不给版本号 所以这里就只比时间
-        // 决定从哪个平台下 时间够用了 也省得给每个模组多打两次请求
+        /// <summary>
+        ///     拼出「来源  |  更新于 X」这一行，供合并条目的来源子行使用。<br/>
+        ///     搜索接口只返回最后更新时间、不返回版本号，所以这里只对比时间 ——
+        ///     判断该从哪个平台下载，时间已经够用，且不必为每个模组额外发两次请求。
+        /// </summary>
         private static string _SourceLineText(CompProject project)
         {
             var source = project.FromCurseForge ? "CurseForge" : "Modrinth";
@@ -2598,7 +2609,8 @@ public static class ModComp
 
         #endregion
 
-        // 后台预热一下下载源延迟 等用户点进详情页开始下载时结果通常已就绪 不阻塞搜索
+        // 后台预热下载源延迟：等用户点进详情页、真正开始下载时，测速结果通常已经就绪。
+        // 不阻塞搜索，也不影响任何既有行为。
         ModSourceSpeedTest.WarmUp();
 
         var realResults = new List<CompProject>();
@@ -2690,19 +2702,19 @@ public static class ModComp
 
             #region 去重与分页判断
 
-            // 保持 Modrinth 在前的顺序 顺便处理同款模组
+            // 优先保留 Modrinth 顺序，并处理「同款模组」。
             //
-            // 原实现是判定为同款就把那条直接丢掉 优先留 Modrinth
-            // 那样两个平台各自的更新时间也跟着没了 用户没法判断该从哪边下 两边版本进度经常对不上
-            // 现在改成合并 主条目还是取 Modrinth 沿用原来的优先级 翻页时也稳定
-            // 另一个来源挂到 MergedSource 上 列表项在下面列出来 点进去是各自的详情页
-            // 开关关掉就退回旧的丢弃行为
+            // 原实现是把判定为同款的那条直接丢弃（优先留 Modrinth），代价是两个平台各自的
+            // 更新时间也一并没了 —— 用户无法判断该从哪个平台下载（两边版本进度常不一致）。
+            // 现在改为合并：主条目仍取 Modrinth（沿用既有优先级，跨页稳定），
+            // 另一来源挂到 MergedSource 上，由列表项在其下方列出，可点击进入各自详情页。
+            // 关掉开关则回到旧的丢弃行为。
             var mergeEnabled = Config.Download.Comp.MergeSameSource;
             var processedResults = new List<CompProject>();
             foreach (var r in rawResults.OrderBy(x => x.FromCurseForge))
             {
-                // processedResults 也得算进来 同一页里 CurseForge 和 Modrinth 那两份结果都还没进 realResults
-                // 只比对已累积的结果 它俩永远碰不上面
+                // 必须把 processedResults 也算上：同一页里 CurseForge 与 Modrinth 的两份
+                // 结果都还没进 realResults，只比对已累积结果的话它们永远碰不上面。
                 var exist = processedResults.FirstOrDefault(b => b.IsSameMod(r))
                             ?? realResults.FirstOrDefault(b => b.IsSameMod(r))
                             ?? storage.results.FirstOrDefault(b => b.IsSameMod(r));
@@ -2712,8 +2724,8 @@ public static class ModComp
                     continue;
                 }
 
-                // IsLike 是启发式 有可能把不同的模组判成同款 合并时打条日志留个痕
-                // 列表项里两条来源都能点 所以误判的代价从整条消失降成多点一下
+                // IsLike 是启发式判定，可能把不同模组误判成同款。合并时记日志留痕；
+                // 列表项会让两条来源各自可点击，误判的代价从「整条消失」降为「多一次点击」。
                 if (!mergeEnabled || exist.MergedSource is not null) continue;
                 exist.MergedSource = r;
                 LogWrapper.Info($"[Comp] 合并同款：{exist.RawName}（{exist.Slug}，" +

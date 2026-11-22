@@ -118,11 +118,4 @@
     <ItemGroup>
         <Content Include="LICENCE" />
     </ItemGroup>
-    <!-- 开服宿主跟着启动器一起发布 少带这一个文件一键开服就直接不可用 -->
-    <!-- 宿主正在运行时它的 exe 会被锁住 那种情况下用 -p:SkipServerHost=true 单独处理 -->
-    <Target Name="PublishServerHost" AfterTargets="Publish" Condition="'$(SkipServerHost)' != 'true'">
-        <MSBuild Projects="$(MSBuildThisFileDirectory)..\PCL.ServerHost\PCL.ServerHost.csproj"
-                 Targets="Publish"
-                 Properties="Configuration=$(Configuration);PublishDir=$(PublishDir)PCL\ServerHost\" />
-    </Target>
 </Project>
