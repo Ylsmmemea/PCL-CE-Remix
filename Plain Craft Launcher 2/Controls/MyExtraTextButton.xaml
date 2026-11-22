@@ -1,0 +1,49 @@
+<Grid
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:svgIcon="clr-namespace:PCL.Core.UI.Controls.SvgIcon;assembly=PCL.Core"
+    xmlns:controls="clr-namespace:PCL.Core.UI.Controls;assembly=PCL.Core"
+    x:Name="PanBack" mc:Ignorable="d" x:Class="PCL.MyExtraTextButton"
+    RenderTransformOrigin="0.5,0.5" ToolTipService.Placement="Left" Height="52" Margin="20">
+    <Grid.RenderTransform>
+        <ScaleTransform ScaleX="0" ScaleY="0" />
+    </Grid.RenderTransform>
+    <Border x:Name="PanClick" BorderThickness="0.001" Background="{StaticResource ColorBrushSemiTransparent}"
+            CornerRadius="{Binding ActualHeight, ConverterParameter=0.4, Converter={StaticResource MultiplicationConverter}, ElementName=PanBack, Mode=OneWay}" />
+    <Grid x:Name="PanScale" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5" Margin="0,10,0,0">
+        <Grid.RenderTransform>
+            <ScaleTransform />
+        </Grid.RenderTransform>
+        <!-- 用 GlassBorder 而非 Border：浮动操作按钮浮在页面内容之上，同样应该跟随
+             毛玻璃强度，并在开启液态玻璃时参与折射。玻璃层由 BlurRadius > 0 驱动，
+             而底色仍由 RefreshColor 直接写 Background —— 只是目标色带 alpha，
+             让玻璃透出来（按钮文字用 ColorBrush8 浅色，底色不能完全透明）。 -->
+        <controls:GlassBorder x:Name="PanColor" BorderThickness="0.001"
+                              GlassRadius="{DynamicResource GlassRadius}"
+                              FallbackBackground="{DynamicResource ColorBrush3}"
+                              CornerRadius="{Binding ActualHeight, ConverterParameter=0.4, Converter={StaticResource MultiplicationConverter}, ElementName=PanBack, Mode=OneWay}">
+            <controls:GlassBorder.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.2" />
+            </controls:GlassBorder.Effect>
+        </controls:GlassBorder>
+        <StackPanel Orientation="Horizontal" Margin="20,0" SnapsToDevicePixels="False" UseLayoutRounding="False">
+            <Grid x:Name="IconHost" Width="16" Margin="2,12,0,12" RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <ScaleTransform />
+                </Grid.RenderTransform>
+                <Path x:Name="Path"
+                      Stretch="Uniform"
+                      Fill="{DynamicResource ColorBrush8}" />
+                <svgIcon:SvgIcon x:Name="ShapeSvgIcon"
+                             Stretch="Uniform"
+                             Visibility="Collapsed"
+                             IconBrush="{Binding Fill, ElementName=Path}" />
+            </Grid>
+            <TextBlock x:Name="LabText" VerticalAlignment="Center" Foreground="{DynamicResource ColorBrush8}"
+                       FontSize="16"
+                       Margin="12,0,0,0.8" />
+        </StackPanel>
+    </Grid>
+</Grid>

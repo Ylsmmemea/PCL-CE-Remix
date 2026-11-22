@@ -1,0 +1,150 @@
+<local:MyPageRight
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:PCL"
+    xmlns:val="https://ce.pclc.cc/core/utils/validate"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    x:Class="PCL.PageSetupAI"
+    PanScroll="{Binding ElementName=PanBack}">
+
+    <local:MyScrollViewer x:Name="PanBack" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="PanMain" Margin="25,10">
+
+            <local:MyCard Margin="0,15,0,15" Title="{DynamicResource Setup.Ai.Title}">
+                <StackPanel Margin="25,40,25,16">
+
+                    <TextBlock Opacity="0.7" TextWrapping="Wrap"
+                               LineHeight="20" LineStackingStrategy="BlockLineHeight"
+                               Text="{DynamicResource Setup.Ai.Description}" />
+
+                    <!-- 使用方式 两种认证走的是完全不同的上游 不自动切换 -->
+                    <Grid Margin="0,18,0,0" Height="28">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                   Text="{DynamicResource Setup.Ai.AuthMode}" />
+                        <local:MyRadioBox Grid.Column="1" x:Name="RadioAiModeApiKey" Height="22" Margin="0,0,24,0"
+                                          Text="{DynamicResource Setup.Ai.AuthMode.ApiKey}"
+                                          Tag="AiAuthMode/0" Check="RadioBoxChange" />
+                        <!-- 两个选项必须待在同一个父容器里 MyRadioBox 的互斥是收集同层兄弟实现的 -->
+                        <local:MyRadioBox Grid.Column="2" x:Name="RadioAiModeChatGpt" Height="22"
+                                          Text="{DynamicResource Setup.Ai.AuthMode.ChatGpt}"
+                                          Tag="AiAuthMode/1" Check="RadioBoxChange" />
+                        <local:MyButton Grid.Column="3" x:Name="BtnAiChatGpt" Margin="24,0,0,0" MinWidth="150"
+                                        Padding="13,0" HorizontalAlignment="Left" Visibility="Collapsed"
+                                        Text="{DynamicResource Setup.Ai.ChatGpt.SignIn}" Click="BtnAiChatGpt_Click" />
+                    </Grid>
+
+                    <!-- 用 API Key -->
+                    <Grid x:Name="PanAiApiKey" Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="28" />
+                            <RowDefinition Height="9" />
+                            <RowDefinition Height="28" />
+                            <RowDefinition Height="9" />
+                            <RowDefinition Height="28" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                   Text="{DynamicResource Setup.Ai.ApiUrl}" />
+                        <local:MyTextBox x:Name="TextAiApiUrl" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
+                                         HintText="{DynamicResource Setup.Ai.ApiUrl.Hint}">
+                            <local:MyTextBox.ValidateRules>
+                                <val:HttpValidator AllowsNullOrEmpty="True" />
+                            </local:MyTextBox.ValidateRules>
+                        </local:MyTextBox>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                   Text="{DynamicResource Setup.Ai.ApiKey}" />
+                        <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <!-- 明文与打码是两个控件 靠可见性切换 TextBox 没有密码模式 PasswordBox 又没有占位提示 -->
+                            <local:MyTextBox x:Name="TextAiApiKey" Grid.Column="0" Margin="0,0,9,0"
+                                             HintText="{DynamicResource Setup.Ai.ApiKey.Hint}" />
+                            <PasswordBox x:Name="PassAiApiKey" Grid.Column="0" Margin="0,0,9,0" PasswordChar="●"
+                                         Visibility="Collapsed" />
+                            <local:MyIconButton x:Name="BtnAiToggleKey" Grid.Column="1" Width="28" Height="28"
+                                                SvgIcon="lucide/eye-off" LogoScale="0.85"
+                                                ToolTip="{DynamicResource Setup.Ai.ApiKey.Hide}"
+                                                Click="BtnAiToggleKey_Click" />
+                        </Grid>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                   Text="{DynamicResource Setup.Ai.Model}" />
+                        <local:MyTextBox x:Name="TextAiModel" Grid.Row="4" Grid.Column="1" Margin="0,0,9,0"
+                                         HintText="{DynamicResource Setup.Ai.Model.Hint}" />
+                        <local:MyButton x:Name="BtnAiFetchModels" Grid.Row="4" Grid.Column="2" MinWidth="110"
+                                        Text="{DynamicResource Setup.Ai.FetchModels}" Padding="13,0"
+                                        Click="BtnAiFetchModels_Click" />
+                    </Grid>
+
+                    <!-- 用 ChatGPT 订阅 -->
+                    <Grid x:Name="PanAiChatGpt" Margin="0,14,0,0" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="10" />
+                            <RowDefinition Height="28" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock x:Name="LabAiChatGptState" Grid.Row="0" Grid.ColumnSpan="3" TextWrapping="Wrap"
+                                   LineHeight="20" LineStackingStrategy="BlockLineHeight" Opacity="0.75"
+                                   Text="{DynamicResource Setup.Ai.ChatGpt.NotSignedIn}" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                   Text="{DynamicResource Setup.Ai.Model}" />
+                        <local:MyTextBox x:Name="TextAiChatGptModel" Grid.Row="2" Grid.Column="1" Margin="0,0,9,0"
+                                         HintText="{DynamicResource Setup.Ai.Model.Hint}" />
+                        <local:MyButton x:Name="BtnAiChatGptFetchModels" Grid.Row="2" Grid.Column="2" MinWidth="110"
+                                        Text="{DynamicResource Setup.Ai.FetchModels}" Padding="13,0"
+                                        Click="BtnAiFetchModels_Click" />
+                    </Grid>
+
+                    <Grid Height="35" Margin="0,18,0,0" HorizontalAlignment="Left">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <local:MyButton x:Name="BtnAiSave" Grid.Column="0" MinWidth="110" Padding="13,0" Margin="0,0,20,0"
+                                        Text="{DynamicResource Setup.Ai.Save}" Click="BtnAiSave_Click" />
+                        <local:MyButton x:Name="BtnAiTest" Grid.Column="1" MinWidth="110" Padding="13,0"
+                                        ColorType="Highlight"
+                                        Text="{DynamicResource Setup.Ai.Test}" Click="BtnAiTest_Click" />
+                    </Grid>
+
+                    <TextBlock x:Name="LabAiResult" Margin="0,14,0,0" Visibility="Collapsed" TextWrapping="Wrap"
+                               LineHeight="20" LineStackingStrategy="BlockLineHeight" />
+
+                    <StackPanel x:Name="PanAiReply" Margin="0,18,0,0" Visibility="Collapsed">
+                        <TextBlock Margin="0,0,0,7" FontSize="12" FontWeight="Bold" Opacity="0.75"
+                                   Text="{DynamicResource Setup.Ai.ReplyTitle}" />
+                        <Border MinHeight="62" Padding="12,9" CornerRadius="5"
+                                Background="{DynamicResource ColorBrush7}">
+                            <TextBlock x:Name="LabAiReply" TextWrapping="Wrap" LineHeight="20"
+                                       LineStackingStrategy="BlockLineHeight" />
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </local:MyCard>
+
+        </StackPanel>
+    </local:MyScrollViewer>
+</local:MyPageRight>

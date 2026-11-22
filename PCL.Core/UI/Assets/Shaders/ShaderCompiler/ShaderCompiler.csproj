@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>PCL.Core.ShaderCompiler</RootNamespace>
+        <AssemblyName>ShaderCompiler</AssemblyName>
+        <!-- 该工具只在需要重新编译着色器时手动运行，不参与解决方案构建 -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+</Project>

@@ -1,0 +1,58 @@
+<Grid x:Class="PCL.AiChatPanel"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:PCL"
+      xmlns:controls="clr-namespace:PCL.Core.UI.Controls;assembly=PCL.Core"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d"
+      UseLayoutRounding="True" SnapsToDevicePixels="True" ClipToBounds="True">
+
+    <!-- 内层宽度由代码按 PanelWidth 赋值 外层由动画改 Width 变宽时把它一段段揭出来
+         看起来就是面板挤着内容推出来 -->
+    <controls:GlassBorder x:Name="PanPanelContent" HorizontalAlignment="Right" Margin="6,6,0,6" CornerRadius="7"
+                          GlassRadius="{DynamicResource GlassRadius}"
+                          GlassBackground="{DynamicResource ColorBrushMsgBoxGlass}"
+                          FallbackBackground="{DynamicResource ColorBrushBackground}">
+        <Border.Effect>
+            <DropShadowEffect Color="{DynamicResource ColorObjectMsgBoxShadow}" BlurRadius="20" ShadowDepth="2"
+                              RenderingBias="Performance" Opacity="0.8" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="1*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="19,16,12,8">
+                <TextBlock x:Name="LabTitle" VerticalAlignment="Center" FontSize="17" FontWeight="Bold"
+                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource ColorBrush1}"
+                           Text="{DynamicResource Setup.AiPanel.Title}" />
+                <local:MyIconButton x:Name="BtnAiPanelClose" HorizontalAlignment="Right" Height="28" Width="28"
+                                    SvgIcon="lucide/x" ToolTip="{DynamicResource Setup.AiPanel.Close}"
+                                    Click="BtnAiPanelClose_Click" />
+            </Grid>
+
+            <local:MyScrollViewer x:Name="PanAiScroll" Grid.Row="1" Margin="14,0,8,0"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="PanAiMessages" Margin="0,4,8,8" />
+            </local:MyScrollViewer>
+
+            <Grid Grid.Row="2" Margin="14,8,14,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <local:MyTextBox x:Name="TextAiPanelInput" Grid.Column="0" Margin="0,0,9,0"
+                                 MinHeight="32" MaxHeight="92" AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalContentAlignment="Center"
+                                 HintText="{DynamicResource Setup.AiPanel.Input.Hint}"
+                                 KeyDown="TextAiPanelInput_KeyDown" />
+                <local:MyButton x:Name="BtnAiPanelSend" Grid.Column="1" MinWidth="76" Padding="13,0"
+                                ColorType="Highlight" VerticalAlignment="Stretch"
+                                Text="{DynamicResource Setup.AiPanel.Send}" Click="BtnAiPanelSend_Click" />
+            </Grid>
+        </Grid>
+    </controls:GlassBorder>
+</Grid>

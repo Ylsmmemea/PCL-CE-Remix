@@ -1,0 +1,37 @@
+<Grid x:Class="PCL.ServerWall"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:PCL">
+
+    <!-- 外层页面已经带了页边距 -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <local:MyCard Grid.Row="0" Margin="0,15,0,15" Title="{DynamicResource Server.Wall.Title}">
+            <Grid Margin="25,40,25,16" Height="35">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <local:MyButton x:Name="BtnNew" MinWidth="110" Padding="13,0" ColorType="Highlight"
+                                    Text="{DynamicResource Server.Left.New}" Click="BtnNew_Click" />
+                    <local:MyButton x:Name="BtnRefresh" MinWidth="110" Padding="13,0" Margin="16,0,0,0"
+                                    Text="{DynamicResource Server.Files.Refresh}" Click="BtnRefresh_Click" />
+                </StackPanel>
+                <TextBlock x:Name="LabCount" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.7" />
+            </Grid>
+        </local:MyCard>
+
+        <!-- 卡片一行三个 宽度按可用宽度算 5:4 高度跟着宽度走 -->
+        <local:MyScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              Style="{StaticResource ScrollViewerFullMargin}">
+            <Grid>
+                <WrapPanel x:Name="PanCards" Margin="0,0,10,20" />
+                <TextBlock x:Name="LabEmpty" Margin="3,6,3,0" Opacity="0.5" TextWrapping="Wrap"
+                           LineHeight="20" LineStackingStrategy="BlockLineHeight" Visibility="Collapsed"
+                           Text="{DynamicResource Server.Left.Empty}" />
+            </Grid>
+        </local:MyScrollViewer>
+    </Grid>
+</Grid>
